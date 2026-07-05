@@ -2,8 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { SearchableSelect } from "../../components/searchable-select";
+import { TypeLabel } from "../../components/type-label";
 import { createParty, deleteParty, updatePartyMembers } from "../../lib/actions";
-import { characterTag, type DokkanCharacter } from "../../lib/characters";
+import {
+  characterTag,
+  DOKKAN_CLASS_LABELS,
+  DOKKAN_RARITY_LABELS,
+  type DokkanCharacter,
+} from "../../lib/characters";
 import {
   PARTY_SLOT_COUNT,
   getActiveLinks,
@@ -91,7 +97,8 @@ function PartyEditor({
               </div>
               {slotCharacter ? (
                 <span className="text-sm text-zinc-800 dark:text-zinc-200">
-                  {characterTag(slotCharacter)}
+                  [<TypeLabel type={slotCharacter.type} /> / {DOKKAN_RARITY_LABELS[slotCharacter.rarity]} /{" "}
+                  {DOKKAN_CLASS_LABELS[slotCharacter.class]}] {slotCharacter.name}
                 </span>
               ) : (
                 <SearchableSelect

@@ -10,6 +10,15 @@ export const DOKKAN_TYPE_LABELS: Record<DokkanType, string> = {
   PHY: "体(PHY)",
 };
 
+/** 属性ごとの色分け(力=赤・速=青・技=黄緑・知=紫・体=黄色) */
+export const DOKKAN_TYPE_COLORS: Record<DokkanType, string> = {
+  STR: "text-red-600 dark:text-red-400",
+  AGL: "text-blue-600 dark:text-blue-400",
+  TEQ: "text-lime-600 dark:text-lime-400",
+  INT: "text-purple-600 dark:text-purple-400",
+  PHY: "text-yellow-600 dark:text-yellow-400",
+};
+
 export type DokkanRarity = "SSR" | "UR" | "LR";
 
 export const DOKKAN_RARITIES: DokkanRarity[] = ["SSR", "UR", "LR"];

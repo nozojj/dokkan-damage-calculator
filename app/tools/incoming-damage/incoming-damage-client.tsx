@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { SearchableSelect } from "../../components/searchable-select";
 import { NumberField } from "../../components/number-field";
 import { SourceAttributions } from "../../components/source-attributions";
+import { TypeLabel } from "../../components/type-label";
 import {
   calculateDamage,
   TYPE_MATCHUP_COEFFICIENT,
@@ -209,6 +210,7 @@ export default function IncomingDamageClient({
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                     <th className="py-1 pr-2">スロット</th>
+                    <th className="py-1 pr-2">属性</th>
                     <th className="py-1 pr-2">キャラ</th>
                     <th className="py-1 pr-2 text-right">参照DEF</th>
                     <th className="py-1 text-right">被ダメージ</th>
@@ -219,6 +221,9 @@ export default function IncomingDamageClient({
                     <tr key={row.slotIndex} className="text-zinc-800 dark:text-zinc-200">
                       <td className="py-1.5 pr-2 tabular-nums text-zinc-500 dark:text-zinc-400">
                         {row.slotIndex}
+                      </td>
+                      <td className="py-1.5 pr-2">
+                        <TypeLabel type={row.character.type} />
                       </td>
                       <td className="py-1.5 pr-2">{row.character.name}</td>
                       <td className="py-1.5 pr-2 text-right tabular-nums">

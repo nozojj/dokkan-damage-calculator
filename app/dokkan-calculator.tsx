@@ -25,6 +25,7 @@ import type { SupportItem } from "./lib/supportItems";
 import { NumberField } from "./components/number-field";
 import { SearchableSelect } from "./components/searchable-select";
 import { SourceAttributions } from "./components/source-attributions";
+import { TypeLabel } from "./components/type-label";
 
 function typeLabel(type: DokkanType) {
   return DOKKAN_TYPE_LABELS[type];
@@ -213,7 +214,7 @@ function CharacterManager({
                 <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
                   <span className="font-medium">{c.name}</span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {typeLabel(c.type)} / {DOKKAN_RARITY_LABELS[c.rarity]} / {DOKKAN_CLASS_LABELS[c.class]}
+                    <TypeLabel type={c.type} /> / {DOKKAN_RARITY_LABELS[c.rarity]} / {DOKKAN_CLASS_LABELS[c.class]}
                   </span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     攻撃{c.baseAtk.toLocaleString()} ・ 防御{c.baseDef.toLocaleString()} ・ 必殺倍率×{c.superAttackMultiplier}
@@ -382,7 +383,9 @@ function EnemyManager({ enemies }: { enemies: Enemy[] }) {
               <li key={e.id} className="flex items-start justify-between gap-2 py-2 text-sm">
                 <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
                   <span className="font-medium">{e.name}</span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{typeLabel(e.type)}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <TypeLabel type={e.type} />
+                  </span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     ATK{e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
                     {e.superAttackMultiplier} ・ 軽減{e.damageReductionPercent}%
@@ -936,7 +939,7 @@ function RegisteredStagesList({ stages }: { stages: Stage[] }) {
               <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                 {s.enemies.map((e) => (
                   <li key={e.id}>
-                    {e.name}({typeLabel(e.type)}) HP{e.hp.toLocaleString()} ・ ATK
+                    {e.name}(<TypeLabel type={e.type} />) HP{e.hp.toLocaleString()} ・ ATK
                     {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
                     {e.superAttackMultiplier} ・ 軽減{e.guardReduction}%
                   </li>
