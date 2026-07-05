@@ -42,6 +42,8 @@ export interface DokkanCharacter {
   kiMultiplier: number;
   /** 必殺技倍率の基準値 (例: 超特大Lv1なら3.5) */
   superAttackMultiplier: number;
+  /** リーダースキルのATK倍率(任意)。パーティ編成でのリーダースキル合成プレビューに使用 */
+  leaderSkillMultiplier: number | null;
   /** Dragon Ball Z Dokkan Battle Wiki (Fandom) 上の該当キャラページURL。出典表示に使用 */
   sourceUrl: string | null;
   /** 紐付けられたリンクスキルのID一覧 */
@@ -50,4 +52,8 @@ export interface DokkanCharacter {
   supportItemIds: string[];
   /** よく組むパーティーメンバーとして登録した他キャラのID一覧 */
   partyMemberIds: string[];
+}
+
+export function characterTag(c: DokkanCharacter): string {
+  return `[${DOKKAN_TYPE_LABELS[c.type]} / ${DOKKAN_RARITY_LABELS[c.rarity]} / ${DOKKAN_CLASS_LABELS[c.class]}] ${c.name}`;
 }

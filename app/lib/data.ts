@@ -4,18 +4,21 @@ import type { Enemy } from "./enemies";
 import type { Stage } from "./stages";
 import type { LinkSkill } from "./linkSkills";
 import type { SupportItem } from "./supportItems";
+import type { Party } from "./party";
+import type { CharacterDefaultArgs, CharacterGetPayload } from "../../generated/prisma-client/models";
 
-export async function getCharacters(): Promise<DokkanCharacter[]> {
-  const characters = await prisma.character.findMany({
-    orderBy: { createdAt: "asc" },
-    include: {
-      linkSkills: true,
-      supportItems: true,
-      partyMembers: true,
-    },
-  });
+const characterWithLinksArgs = {
+  include: {
+    linkSkills: true,
+    supportItems: true,
+    partyMembers: true,
+  },
+} satisfies CharacterDefaultArgs;
 
-  return characters.map((c) => ({
+type CharacterWithLinks = CharacterGetPayload<typeof characterWithLinksArgs>;
+
+function toDokkanCharacter(c: CharacterWithLinks): DokkanCharacter {
+  return {
     id: c.id,
     name: c.name,
     type: c.type,
@@ -25,10 +28,41 @@ export async function getCharacters(): Promise<DokkanCharacter[]> {
     baseDef: c.baseDef,
     kiMultiplier: c.kiMultiplier,
     superAttackMultiplier: c.superAttackMultiplier,
+    leaderSkillMultiplier: c.leaderSkillMultiplier,
     sourceUrl: c.sourceUrl,
     linkSkillIds: c.linkSkills.map((l) => l.linkSkillId),
     supportItemIds: c.supportItems.map((s) => s.supportItemId),
     partyMemberIds: c.partyMembers.map((p) => p.memberId),
+  };
+}
+
+export async function getCharacters(): Promise<DokkanCharacter[]> {
+  const characters = await prisma.character.findMany({
+    orderBy: { createdAt: "asc" },
+    ...characterWithLinksArgs,
+  });
+
+  return characters.map(toDokkanCharacter);
+}
+
+export async function getParties(): Promise<Party[]> {
+  const parties = await prisma.party.findMany({
+    orderBy: { createdAt: "asc" },
+    include: {
+      members: {
+        orderBy: { slotIndex: "asc" },
+        include: { character: characterWithLinksArgs },
+      },
+    },
+  });
+
+  return parties.map((p) => ({
+    id: p.id,
+    name: p.name,
+    members: p.members.map((m) => ({
+      slotIndex: m.slotIndex,
+      character: toDokkanCharacter(m.character),
+    })),
   }));
 }
 
