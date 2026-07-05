@@ -7,6 +7,8 @@ export interface StageEnemy {
   atk: number;
   def: number;
   type: DokkanType;
+  /** この敵の必殺技倍率。被ダメージ計算(敵からの攻撃)に使用 */
+  superAttackMultiplier: number;
 }
 
 export interface StageMechanic {
@@ -14,7 +16,7 @@ export interface StageMechanic {
   mechanic: string;
 }
 
-/** クエスト/イベントのステージ攻略メモ。ダメージ計算とは独立した参照用データ */
+/** クエスト/イベントのステージ攻略メモ。敵の被ダメージ計算(1キャラ分)にも使用 */
 export interface Stage {
   id: string;
   name: string;

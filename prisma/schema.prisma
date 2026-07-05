@@ -56,7 +56,7 @@ model Enemy {
   createdAt              DateTime @default(now())
 }
 
-/// クエスト/イベントのステージ攻略メモ。ダメージ計算とは独立した参照用データ
+/// クエスト/イベントのステージ攻略メモ。敵の被ダメージ計算(1キャラ分)にも使用
 model Stage {
   id         String          @id @default(cuid())
   /// フル表示名 (例: レッドゾーン ブロリー)
@@ -75,14 +75,16 @@ model Stage {
 
 /// ステージ専用の敵データ(汎用Enemyとは別。ステージ間で使い回さない)
 model StageEnemy {
-  id      String     @id @default(cuid())
-  name    String
-  hp      BigInt
-  atk     Int
-  def     Int
-  type    DokkanType
-  stageId String
-  stage   Stage      @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  id                    String     @id @default(cuid())
+  name                  String
+  hp                    BigInt
+  atk                   Int
+  def                   Int
+  type                  DokkanType
+  /// この敵の必殺技倍率。被ダメージ計算(敵からの攻撃)に使用
+  superAttackMultiplier Float      @default(1)
+  stageId               String
+  stage                 Stage      @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }
 
 /// ステージ固有のギミック・特殊ルールのメモ(計算には使わない参照用)
