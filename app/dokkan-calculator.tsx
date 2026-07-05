@@ -298,32 +298,37 @@ function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
           </summary>
           <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
             {characters.map((c) => (
-              <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span className="text-zinc-800 dark:text-zinc-200">
-                  {characterTag(c)}
-                  <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
-                    ATK{c.baseAtk} / DEF{c.baseDef} / 気力×{c.kiMultiplier} / 必殺×{c.superAttackMultiplier}
+              <li key={c.id} className="flex items-start justify-between gap-2 py-2 text-sm">
+                <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {typeLabel(c.type)} / {DOKKAN_RARITY_LABELS[c.rarity]} / {DOKKAN_CLASS_LABELS[c.class]}
                   </span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    攻撃{c.baseAtk.toLocaleString()} ・ 防御{c.baseDef.toLocaleString()} ・ 必殺倍率×{c.superAttackMultiplier}
+                  </span>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
                   {c.sourceUrl && (
                     <a
                       href={c.sourceUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="ml-2 text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                      className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
                     >
                       出典
                     </a>
                   )}
-                </span>
-                <form action={deleteCharacter}>
-                  <input type="hidden" name="id" value={c.id} />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
-                  >
-                    削除
-                  </button>
-                </form>
+                  <form action={deleteCharacter}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      削除
+                    </button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
