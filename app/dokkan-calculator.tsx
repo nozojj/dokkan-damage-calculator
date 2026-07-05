@@ -547,7 +547,7 @@ function CreateStageForm() {
           このステージの敵(汎用の敵管理とは別に、このステージ専用として登録)
         </legend>
         {enemyRows.map((rowId) => (
-          <div key={rowId} className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+          <div key={rowId} className="grid grid-cols-2 gap-2 sm:grid-cols-7">
             <input
               type="text"
               name="enemyName"
@@ -570,6 +570,14 @@ function CreateStageForm() {
               type="number"
               name="enemyDef"
               placeholder="DEF"
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            <input
+              type="number"
+              step="any"
+              name="enemySuperAttackMultiplier"
+              placeholder="必殺倍率"
+              defaultValue={1}
               className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
             <div className="flex gap-1">
@@ -679,7 +687,8 @@ function StageManager({ stages }: { stages: Stage[] }) {
                     {s.enemies.map((e) => (
                       <li key={e.id}>
                         {e.name}({typeLabel(e.type)}) HP{e.hp.toLocaleString()} ・ ATK
-                        {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()}
+                        {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
+                        {e.superAttackMultiplier}
                       </li>
                     ))}
                   </ul>
@@ -732,6 +741,23 @@ export default function DokkanCalculator({
   const [attackerEnemy, setAttackerEnemy] = useState<Enemy | null>(null);
   const [allyCharacter, setAllyCharacter] = useState<DokkanCharacter | null>(null);
 
+  const [stageDamageStageId, setStageDamageStageId] = useState("");
+  const [stageDamageEnemyId, setStageDamageEnemyId] = useState("");
+  const [stageDamageCharacter, setStageDamageCharacter] = useState<DokkanCharacter | null>(null);
+  const [stageDamageAllyDef, setStageDamageAllyDef] = useState(8000);
+  const [stageDamageReductionPercent, setStageDamageReductionPercent] = useState(0);
+  const [stageDamageTypeMatchup, setStageDamageTypeMatchup] = useState<TypeMatchup>("neutral");
+  const [stageDamageIsCritical, setStageDamageIsCritical] = useState(false);
+
+  const selectedDamageStage = useMemo(
+    () => stages.find((s) => s.id === stageDamageStageId) ?? null,
+    [stages, stageDamageStageId]
+  );
+  const selectedDamageStageEnemy = useMemo(
+    () => selectedDamageStage?.enemies.find((e) => e.id === stageDamageEnemyId) ?? null,
+    [selectedDamageStage, stageDamageEnemyId]
+  );
+
   const result = useMemo(
     () =>
       calculateDamage({
@@ -783,6 +809,28 @@ export default function DokkanCalculator({
       enemyIsCritical,
     ]
   );
+
+  const stageIncomingResult = useMemo(() => {
+    if (!selectedDamageStageEnemy) return null;
+    return calculateDamage({
+      baseAtk: selectedDamageStageEnemy.atk,
+      leaderSkillMultiplier: 1,
+      passiveMultiplier: 1,
+      otherAtkMultiplier: 1,
+      kiMultiplier: 1,
+      superAttackMultiplier: selectedDamageStageEnemy.superAttackMultiplier,
+      enemyDef: stageDamageAllyDef,
+      enemyDamageReductionPercent: stageDamageReductionPercent,
+      typeMatchup: stageDamageTypeMatchup,
+      isCritical: stageDamageIsCritical,
+    });
+  }, [
+    selectedDamageStageEnemy,
+    stageDamageAllyDef,
+    stageDamageReductionPercent,
+    stageDamageTypeMatchup,
+    stageDamageIsCritical,
+  ]);
 
   return (
     <div className="flex flex-1 flex-col items-center bg-zinc-50 px-4 py-12 font-sans dark:bg-black sm:px-8">
@@ -1034,6 +1082,142 @@ export default function DokkanCalculator({
             </span>
           </div>
           <SourceAttributions items={[attackerEnemy, allyCharacter]} />
+        </section>
+
+        <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+          ステージ被ダメージ計算(選択した1キャラ分)
+        </h2>
+        <section className="grid grid-cols-1 gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-2">
+          <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">ステージ選択</span>
+            <select
+              value={stageDamageStageId}
+              onChange={(e) => {
+                setStageDamageStageId(e.target.value);
+                setStageDamageEnemyId("");
+              }}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            >
+              <option value="">選択してください</option>
+              {stages.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}({s.event} / {s.difficulty})
+                </option>
+              ))}
+            </select>
+            {stages.length === 0 && (
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                「ステージ管理」から追加すると選択できます
+              </span>
+            )}
+          </label>
+
+          {selectedDamageStage && (
+            <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+              <span className="font-medium text-zinc-800 dark:text-zinc-200">敵選択</span>
+              <select
+                value={stageDamageEnemyId}
+                onChange={(e) => setStageDamageEnemyId(e.target.value)}
+                className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              >
+                <option value="">選択してください</option>
+                {selectedDamageStage.enemies.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name}({typeLabel(e.type)}) ATK{e.atk.toLocaleString()} ・ 必殺倍率×
+                    {e.superAttackMultiplier}
+                  </option>
+                ))}
+              </select>
+              {selectedDamageStage.enemies.length === 0 && (
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  このステージには敵が登録されていません
+                </span>
+              )}
+            </label>
+          )}
+
+          <SearchableSelect
+            label="被弾するキャラクター選択(自動入力)"
+            items={characters}
+            getKey={(c) => c.id}
+            getLabel={characterTag}
+            placeholder="キャラ名で検索"
+            emptyHint='下の「キャラクター管理」から追加すると選択できます'
+            onSelect={(c) => {
+              setStageDamageAllyDef(c.baseDef);
+              setStageDamageCharacter(c);
+            }}
+          />
+          <NumberField
+            label="味方DEF"
+            value={stageDamageAllyDef}
+            onChange={setStageDamageAllyDef}
+            step="1"
+          />
+          <NumberField
+            label="味方ダメージ軽減率(%)"
+            value={stageDamageReductionPercent}
+            onChange={setStageDamageReductionPercent}
+            hint="ガード・被ダメ軽減パッシブなど。無ければ0"
+          />
+
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">属性相性</span>
+            <select
+              value={stageDamageTypeMatchup}
+              onChange={(e) => setStageDamageTypeMatchup(e.target.value as TypeMatchup)}
+              disabled={stageDamageIsCritical}
+              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            >
+              {TYPE_MATCHUP_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex items-center gap-2 text-sm font-medium text-zinc-800 dark:text-zinc-200 sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={stageDamageIsCritical}
+              onChange={(e) => setStageDamageIsCritical(e.target.checked)}
+              className="h-4 w-4"
+            />
+            敵が会心(クリティカル)を発生
+          </label>
+        </section>
+
+        <section className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">計算結果</h2>
+          {!selectedDamageStageEnemy || !stageDamageCharacter || !stageIncomingResult ? (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              ステージ・敵・キャラクターを選択すると被ダメージを計算します
+            </p>
+          ) : (
+            <>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+                <dt>参照DEF(会心時は0)</dt>
+                <dd className="text-right tabular-nums">
+                  {stageIncomingResult.effectiveDef.toLocaleString()}
+                </dd>
+                <dt>ATK-DEF</dt>
+                <dd className="text-right tabular-nums">
+                  {Math.floor(stageIncomingResult.atkMinusDef).toLocaleString()}
+                </dd>
+                <dt>適用係数</dt>
+                <dd className="text-right tabular-nums">×{stageIncomingResult.coefficient}</dd>
+              </dl>
+              <div className="mt-2 flex items-baseline justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                  被ダメージ({stageDamageCharacter.name})
+                </span>
+                <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 tabular-nums">
+                  {stageIncomingResult.damage.toLocaleString()}
+                </span>
+              </div>
+            </>
+          )}
         </section>
       </main>
     </div>

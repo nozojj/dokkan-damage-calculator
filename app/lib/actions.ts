@@ -123,6 +123,7 @@ export async function createStage(formData: FormData) {
   const enemyAtks = formData.getAll("enemyAtk").map(String);
   const enemyDefs = formData.getAll("enemyDef").map(String);
   const enemyTypes = formData.getAll("enemyType").map(String) as DokkanType[];
+  const enemySuperAttackMultipliers = formData.getAll("enemySuperAttackMultiplier").map(String);
 
   const mechanics = formData
     .getAll("mechanic")
@@ -146,6 +147,7 @@ export async function createStage(formData: FormData) {
       atk: Math.max(0, Math.trunc(Number(enemyAtks[i])) || 0),
       def: Math.max(0, Math.trunc(Number(enemyDefs[i])) || 0),
       type: enemyTypes[i],
+      superAttackMultiplier: Number(enemySuperAttackMultipliers[i]) || 1,
     }))
     .filter((e) => e.name !== "");
 

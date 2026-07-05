@@ -61,6 +61,7 @@ export async function getStages(): Promise<Stage[]> {
       atk: se.atk,
       def: se.def,
       type: se.type,
+      superAttackMultiplier: se.superAttackMultiplier,
     })),
     mechanics: s.mechanics.map((m) => ({
       id: m.id,
