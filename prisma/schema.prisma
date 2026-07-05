@@ -42,3 +42,35 @@ model Character {
   externalId            String?      @unique
   createdAt             DateTime     @default(now())
 }
+
+model Enemy {
+  id                     String       @id @default(cuid())
+  name                   String
+  type                   DokkanType
+  atk                    Int
+  def                    Int
+  superAttackMultiplier  Float
+  /// 敵自身のガード・被ダメージ軽減率(%)。プレイヤー側の攻撃に対する軽減
+  damageReductionPercent Float        @default(0)
+  sourceUrl              String?
+  createdAt              DateTime     @default(now())
+  stages                 StageEnemy[]
+}
+
+model Stage {
+  id        String       @id @default(cuid())
+  name      String
+  createdAt DateTime     @default(now())
+  enemies   StageEnemy[]
+}
+
+model StageEnemy {
+  id      String @id @default(cuid())
+  order   Int    @default(0)
+  stageId String
+  enemyId String
+  stage   Stage  @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  enemy   Enemy  @relation(fields: [enemyId], references: [id], onDelete: Cascade)
+
+  @@unique([stageId, enemyId])
+}

@@ -68,3 +68,79 @@ export async function deleteCharacter(formData: FormData) {
 
   revalidatePath("/");
 }
+
+export async function createEnemy(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const type = String(formData.get("type") ?? "") as DokkanType;
+  const atk = Number(formData.get("atk"));
+  const def = Number(formData.get("def"));
+  const superAttackMultiplier = Number(formData.get("superAttackMultiplier"));
+  const damageReductionPercent = Number(formData.get("damageReductionPercent") || 0);
+  const sourceUrlInput = String(formData.get("sourceUrl") ?? "").trim();
+  const sourceUrl = sourceUrlInput === "" ? null : sourceUrlInput;
+
+  if (!name) {
+    throw new Error("敵名は必須です");
+  }
+  if (!DOKKAN_TYPES.includes(type)) {
+    throw new Error("属性が不正です");
+  }
+  if ([atk, def, superAttackMultiplier, damageReductionPercent].some((n) => Number.isNaN(n))) {
+    throw new Error("数値項目が不正です");
+  }
+
+  await prisma.enemy.create({
+    data: {
+      name,
+      type,
+      atk,
+      def,
+      superAttackMultiplier,
+      damageReductionPercent,
+      sourceUrl,
+    },
+  });
+
+  revalidatePath("/");
+}
+
+export async function deleteEnemy(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.enemy.delete({ where: { id } });
+
+  revalidatePath("/");
+}
+
+export async function createStage(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const enemyIds = formData.getAll("enemyIds").map(String).filter(Boolean);
+
+  if (!name) {
+    throw new Error("ステージ名は必須です");
+  }
+
+  await prisma.stage.create({
+    data: {
+      name,
+      enemies: {
+        create: enemyIds.map((enemyId, index) => ({
+          order: index,
+          enemy: { connect: { id: enemyId } },
+        })),
+      },
+    },
+  });
+
+  revalidatePath("/");
+}
+
+export async function deleteStage(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.stage.delete({ where: { id } });
+
+  revalidatePath("/");
+}
