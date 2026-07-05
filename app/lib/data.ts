@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import type { DokkanCharacter } from "./characters";
-import type { Enemy, Stage } from "./enemies";
+import type { Enemy } from "./enemies";
+import type { Stage } from "./stages";
 
 export async function getCharacters(): Promise<DokkanCharacter[]> {
   const characters = await prisma.character.findMany({
@@ -42,25 +43,28 @@ export async function getStages(): Promise<Stage[]> {
   const stages = await prisma.stage.findMany({
     orderBy: { createdAt: "asc" },
     include: {
-      enemies: {
-        orderBy: { order: "asc" },
-        include: { enemy: true },
-      },
+      enemies: true,
+      mechanics: true,
     },
   });
 
   return stages.map((s) => ({
     id: s.id,
     name: s.name,
+    event: s.event,
+    difficulty: s.difficulty,
+    enemyCount: s.enemyCount,
     enemies: s.enemies.map((se) => ({
-      id: se.enemy.id,
-      name: se.enemy.name,
-      type: se.enemy.type,
-      atk: se.enemy.atk,
-      def: se.enemy.def,
-      superAttackMultiplier: se.enemy.superAttackMultiplier,
-      damageReductionPercent: se.enemy.damageReductionPercent,
-      sourceUrl: se.enemy.sourceUrl,
+      id: se.id,
+      name: se.name,
+      hp: Number(se.hp),
+      atk: se.atk,
+      def: se.def,
+      type: se.type,
+    })),
+    mechanics: s.mechanics.map((m) => ({
+      id: m.id,
+      mechanic: m.mechanic,
     })),
   }));
 }

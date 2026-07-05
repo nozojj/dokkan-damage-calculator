@@ -115,21 +115,54 @@ export async function deleteEnemy(formData: FormData) {
 
 export async function createStage(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
-  const enemyIds = formData.getAll("enemyIds").map(String).filter(Boolean);
+  const event = String(formData.get("event") ?? "").trim();
+  const difficulty = String(formData.get("difficulty") ?? "").trim();
+
+  const enemyNames = formData.getAll("enemyName").map((v) => String(v).trim());
+  const enemyHps = formData.getAll("enemyHp").map(String);
+  const enemyAtks = formData.getAll("enemyAtk").map(String);
+  const enemyDefs = formData.getAll("enemyDef").map(String);
+  const enemyTypes = formData.getAll("enemyType").map(String) as DokkanType[];
+
+  const mechanics = formData
+    .getAll("mechanic")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
 
   if (!name) {
     throw new Error("ステージ名は必須です");
+  }
+  if (!event) {
+    throw new Error("イベント名は必須です");
+  }
+  if (!difficulty) {
+    throw new Error("難易度は必須です");
+  }
+
+  const enemies = enemyNames
+    .map((enemyName, i) => ({
+      name: enemyName,
+      hp: BigInt(Math.max(0, Math.trunc(Number(enemyHps[i])) || 0)),
+      atk: Math.max(0, Math.trunc(Number(enemyAtks[i])) || 0),
+      def: Math.max(0, Math.trunc(Number(enemyDefs[i])) || 0),
+      type: enemyTypes[i],
+    }))
+    .filter((e) => e.name !== "");
+
+  for (const e of enemies) {
+    if (!DOKKAN_TYPES.includes(e.type)) {
+      throw new Error("敵の属性が不正です");
+    }
   }
 
   await prisma.stage.create({
     data: {
       name,
-      enemies: {
-        create: enemyIds.map((enemyId, index) => ({
-          order: index,
-          enemy: { connect: { id: enemyId } },
-        })),
-      },
+      event,
+      difficulty,
+      enemyCount: enemies.length,
+      enemies: { create: enemies },
+      mechanics: { create: mechanics.map((mechanic) => ({ mechanic })) },
     },
   });
 

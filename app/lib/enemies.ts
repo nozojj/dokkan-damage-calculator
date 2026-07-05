@@ -12,8 +12,3 @@ export interface Enemy {
   sourceUrl: string | null;
 }
 
-export interface Stage {
-  id: string;
-  name: string;
-  enemies: Enemy[];
-}

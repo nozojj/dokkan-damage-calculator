@@ -44,33 +44,51 @@ model Character {
 }
 
 model Enemy {
-  id                     String       @id @default(cuid())
+  id                     String   @id @default(cuid())
   name                   String
   type                   DokkanType
   atk                    Int
   def                    Int
   superAttackMultiplier  Float
   /// 敵自身のガード・被ダメージ軽減率(%)。プレイヤー側の攻撃に対する軽減
-  damageReductionPercent Float        @default(0)
+  damageReductionPercent Float    @default(0)
   sourceUrl              String?
-  createdAt              DateTime     @default(now())
-  stages                 StageEnemy[]
+  createdAt              DateTime @default(now())
 }
 
+/// クエスト/イベントのステージ攻略メモ。ダメージ計算とは独立した参照用データ
 model Stage {
-  id        String       @id @default(cuid())
-  name      String
-  createdAt DateTime     @default(now())
-  enemies   StageEnemy[]
+  id         String          @id @default(cuid())
+  /// フル表示名 (例: レッドゾーン ブロリー)
+  name       String
+  /// イベント名 (例: レッドゾーン)
+  event      String
+  /// 難易度・ステージ番号 (例: STAGE8)
+  difficulty String
+  /// 登録済み敵数のキャッシュ(enemiesの件数)
+  enemyCount Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  enemies    StageEnemy[]
+  mechanics  StageMechanic[]
 }
 
+/// ステージ専用の敵データ(汎用Enemyとは別。ステージ間で使い回さない)
 model StageEnemy {
-  id      String @id @default(cuid())
-  order   Int    @default(0)
+  id      String     @id @default(cuid())
+  name    String
+  hp      BigInt
+  atk     Int
+  def     Int
+  type    DokkanType
   stageId String
-  enemyId String
-  stage   Stage  @relation(fields: [stageId], references: [id], onDelete: Cascade)
-  enemy   Enemy  @relation(fields: [enemyId], references: [id], onDelete: Cascade)
+  stage   Stage      @relation(fields: [stageId], references: [id], onDelete: Cascade)
+}
 
-  @@unique([stageId, enemyId])
+/// ステージ固有のギミック・特殊ルールのメモ(計算には使わない参照用)
+model StageMechanic {
+  id       String @id @default(cuid())
+  mechanic String
+  stageId  String
+  stage    Stage  @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }
