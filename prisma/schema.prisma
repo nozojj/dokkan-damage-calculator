@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client"
-  output   = "../generated/prisma"
+  output   = "../generated/prisma-client"
 }
 
 datasource db {
@@ -17,6 +17,7 @@ enum DokkanType {
 
 enum DokkanRarity {
   SSR
+  UR
   LR
 }
 
@@ -37,5 +38,7 @@ model Character {
   superAttackMultiplier Float
   /// Dragon Ball Z Dokkan Battle Wiki (Fandom) 上の該当キャラページURL。CC BY-SA 3.0の出典表示に使用
   sourceUrl             String?
+  /// Wikiインポート元の外部ID(DokkanAPIのカードID)。再インポート時の重複防止用
+  externalId            String?      @unique
   createdAt             DateTime     @default(now())
 }

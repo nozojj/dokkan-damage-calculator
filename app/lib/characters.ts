@@ -19,12 +19,13 @@ export const DOKKAN_TYPE_LABELS_EN: Record<DokkanType, string> = {
   PHY: "Physical Strength",
 };
 
-export type DokkanRarity = "SSR" | "LR";
+export type DokkanRarity = "SSR" | "UR" | "LR";
 
-export const DOKKAN_RARITIES: DokkanRarity[] = ["SSR", "LR"];
+export const DOKKAN_RARITIES: DokkanRarity[] = ["SSR", "UR", "LR"];
 
 export const DOKKAN_RARITY_LABELS: Record<DokkanRarity, string> = {
   SSR: "超(SSR)",
+  UR: "超級(UR)",
   LR: "極(LR)",
 };
 
