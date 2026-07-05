@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   calculateDamage,
   TYPE_MATCHUP_COEFFICIENT,
@@ -14,16 +14,30 @@ import {
   DOKKAN_TYPES,
   DOKKAN_TYPE_LABELS,
   type DokkanCharacter,
+  type DokkanType,
 } from "./lib/characters";
+import type { Enemy } from "./lib/enemies";
+import type { Stage } from "./lib/stages";
 
-function typeLabel(type: DokkanCharacter["type"]) {
+function typeLabel(type: DokkanType) {
   return DOKKAN_TYPE_LABELS[type];
 }
 
 function characterTag(c: DokkanCharacter) {
   return `[${typeLabel(c.type)} / ${DOKKAN_RARITY_LABELS[c.rarity]} / ${DOKKAN_CLASS_LABELS[c.class]}] ${c.name}`;
 }
-import { createCharacter, deleteCharacter } from "./lib/actions";
+
+function enemyTag(e: Enemy) {
+  return `[${typeLabel(e.type)}] ${e.name}`;
+}
+import {
+  createCharacter,
+  createEnemy,
+  createStage,
+  deleteCharacter,
+  deleteEnemy,
+  deleteStage,
+} from "./lib/actions";
 
 const TYPE_MATCHUP_OPTIONS: { value: TypeMatchup; label: string }[] = [
   { value: "advantage", label: `有利(抜群) ×${TYPE_MATCHUP_COEFFICIENT.advantage}` },
@@ -61,28 +75,28 @@ function NumberField({
 }
 
 function SourceAttributions({
-  characters,
+  items,
 }: {
-  characters: (DokkanCharacter | null)[];
+  items: ({ id: string; name: string; sourceUrl: string | null } | null)[];
 }) {
-  const withSource = characters.filter(
-    (c): c is DokkanCharacter & { sourceUrl: string } => !!c?.sourceUrl
+  const withSource = items.filter(
+    (item): item is { id: string; name: string; sourceUrl: string } => !!item?.sourceUrl
   );
 
   if (withSource.length === 0) return null;
 
   return (
     <div className="mt-3 flex flex-col gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
-      {withSource.map((c) => (
-        <p key={c.id} className="text-xs text-zinc-500 dark:text-zinc-400">
+      {withSource.map((item) => (
+        <p key={item.id} className="text-xs text-zinc-500 dark:text-zinc-400">
           出典:{" "}
           <a
-            href={c.sourceUrl}
+            href={item.sourceUrl}
             target="_blank"
             rel="noreferrer"
             className="underline hover:text-zinc-700 dark:hover:text-zinc-200"
           >
-            {c.name} - Dragon Ball Z Dokkan Battle Wiki
+            {item.name} - Dragon Ball Z Dokkan Battle Wiki
           </a>
         </p>
       ))}
@@ -90,16 +104,24 @@ function SourceAttributions({
   );
 }
 
-const CHARACTER_SEARCH_RESULT_LIMIT = 50;
+const SEARCH_RESULT_LIMIT = 50;
 
-function CharacterSelect({
+function SearchableSelect<T>({
   label,
-  characters,
+  items,
+  getKey,
+  getLabel,
   onSelect,
+  placeholder = "検索",
+  emptyHint = "登録すると選択できます",
 }: {
   label: string;
-  characters: DokkanCharacter[];
-  onSelect: (character: DokkanCharacter) => void;
+  items: T[];
+  getKey: (item: T) => string;
+  getLabel: (item: T) => string;
+  onSelect: (item: T) => void;
+  placeholder?: string;
+  emptyHint?: string;
 }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -107,10 +129,10 @@ function CharacterSelect({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = q
-      ? characters.filter((c) => characterTag(c).toLowerCase().includes(q))
-      : characters;
-    return matches.slice(0, CHARACTER_SEARCH_RESULT_LIMIT);
-  }, [characters, query]);
+      ? items.filter((item) => getLabel(item).toLowerCase().includes(q))
+      : items;
+    return matches.slice(0, SEARCH_RESULT_LIMIT);
+  }, [items, query, getLabel]);
 
   return (
     <div className="relative flex flex-col gap-1 text-sm sm:col-span-2">
@@ -118,8 +140,8 @@ function CharacterSelect({
       <input
         type="text"
         value={query}
-        disabled={characters.length === 0}
-        placeholder={characters.length === 0 ? "未登録" : "キャラ名で検索"}
+        disabled={items.length === 0}
+        placeholder={items.length === 0 ? "未登録" : placeholder}
         onChange={(e) => {
           setQuery(e.target.value);
           setIsOpen(true);
@@ -128,36 +150,34 @@ function CharacterSelect({
         onBlur={() => setTimeout(() => setIsOpen(false), 150)}
         className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
       />
-      {characters.length === 0 && (
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          下の「キャラクター管理」から追加すると選択できます
-        </span>
+      {items.length === 0 && (
+        <span className="text-xs text-zinc-500 dark:text-zinc-400">{emptyHint}</span>
       )}
-      {isOpen && characters.length > 0 && (
+      {isOpen && items.length > 0 && (
         <ul className="absolute top-full z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-zinc-300 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
           {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">該当するキャラがいません</li>
+            <li className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">該当がありません</li>
           ) : (
-            filtered.map((c) => (
-              <li key={c.id}>
+            filtered.map((item) => (
+              <li key={getKey(item)}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    onSelect(c);
-                    setQuery(characterTag(c));
+                    onSelect(item);
+                    setQuery(getLabel(item));
                     setIsOpen(false);
                   }}
                   className="block w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
                 >
-                  {characterTag(c)}
+                  {getLabel(item)}
                 </button>
               </li>
             ))
           )}
-          {characters.length > filtered.length && (
+          {items.length > filtered.length && (
             <li className="px-3 py-1 text-xs text-zinc-400 dark:text-zinc-500">
-              他{characters.length - filtered.length}件あります。検索で絞り込んでください
+              他{items.length - filtered.length}件あります。検索で絞り込んでください
             </li>
           )}
         </ul>
@@ -338,10 +358,356 @@ function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
   );
 }
 
+function EnemyManager({ enemies }: { enemies: Enemy[] }) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">敵管理</h2>
+
+      <form
+        key={enemies.length}
+        action={createEnemy}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">敵名</span>
+          <input
+            type="text"
+            name="name"
+            required
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">属性</span>
+          <select
+            name="type"
+            defaultValue={DOKKAN_TYPES[0]}
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          >
+            {DOKKAN_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {typeLabel(t)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">ATK</span>
+          <input
+            type="number"
+            name="atk"
+            step="1"
+            required
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">DEF</span>
+          <input
+            type="number"
+            name="def"
+            step="1"
+            required
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">必殺技倍率</span>
+          <input
+            type="number"
+            name="superAttackMultiplier"
+            step="any"
+            required
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">
+            ガード・軽減率(%)
+          </span>
+          <input
+            type="number"
+            name="damageReductionPercent"
+            step="any"
+            defaultValue={0}
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">
+            出典URL(Dokkan Battle Wiki)
+          </span>
+          <input
+            type="url"
+            name="sourceUrl"
+            placeholder="https://dbz-dokkanbattle.fandom.com/wiki/..."
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            CC BY-SA 3.0での出典表示に使用。該当敵のWikiページURLを入力
+          </span>
+        </label>
+        <button
+          type="submit"
+          className="sm:col-span-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          追加
+        </button>
+      </form>
+
+      {enemies.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            登録済み敵一覧を表示({enemies.length}件)
+          </summary>
+          <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+            {enemies.map((e) => (
+              <li key={e.id} className="flex items-start justify-between gap-2 py-2 text-sm">
+                <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                  <span className="font-medium">{e.name}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{typeLabel(e.type)}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    ATK{e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
+                    {e.superAttackMultiplier} ・ 軽減{e.damageReductionPercent}%
+                  </span>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {e.sourceUrl && (
+                    <a
+                      href={e.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    >
+                      出典
+                    </a>
+                  )}
+                  <form action={deleteEnemy}>
+                    <input type="hidden" name="id" value={e.id} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      削除
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+function CreateStageForm() {
+  const [enemyRows, setEnemyRows] = useState<number[]>([0]);
+  const [mechanicRows, setMechanicRows] = useState<number[]>([0]);
+  const nextEnemyRowId = useRef(1);
+  const nextMechanicRowId = useRef(1);
+
+  return (
+    <form action={createStage} className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">ステージ名</span>
+          <input
+            type="text"
+            name="name"
+            required
+            placeholder="例: レッドゾーン ブロリー"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">イベント名</span>
+          <input
+            type="text"
+            name="event"
+            required
+            placeholder="例: レッドゾーン"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">難易度</span>
+          <input
+            type="text"
+            name="difficulty"
+            required
+            placeholder="例: STAGE8"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+      </div>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          このステージの敵(汎用の敵管理とは別に、このステージ専用として登録)
+        </legend>
+        {enemyRows.map((rowId) => (
+          <div key={rowId} className="grid grid-cols-2 gap-2 sm:grid-cols-6">
+            <input
+              type="text"
+              name="enemyName"
+              placeholder="敵名"
+              className="sm:col-span-2 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            <input
+              type="number"
+              name="enemyHp"
+              placeholder="HP"
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            <input
+              type="number"
+              name="enemyAtk"
+              placeholder="ATK"
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            <input
+              type="number"
+              name="enemyDef"
+              placeholder="DEF"
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            <div className="flex gap-1">
+              <select
+                name="enemyType"
+                defaultValue={DOKKAN_TYPES[0]}
+                className="w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              >
+                {DOKKAN_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {typeLabel(t)}
+                  </option>
+                ))}
+              </select>
+              {enemyRows.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setEnemyRows((rows) => rows.filter((id) => id !== rowId))}
+                  className="shrink-0 rounded-md border border-zinc-300 px-2 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                >
+                  削除
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setEnemyRows((rows) => [...rows, nextEnemyRowId.current++])}
+          className="self-start rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-400"
+        >
+          敵の行を追加
+        </button>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          ギミック・特殊ルール(メモ、計算には使用しません)
+        </legend>
+        {mechanicRows.map((rowId) => (
+          <input
+            key={rowId}
+            type="text"
+            name="mechanic"
+            placeholder="例: 3ターン後に全体即死級ダメージ"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        ))}
+        <button
+          type="button"
+          onClick={() => setMechanicRows((rows) => [...rows, nextMechanicRowId.current++])}
+          className="self-start rounded-md border border-zinc-300 px-3 py-1 text-xs text-zinc-600 hover:border-zinc-400 dark:border-zinc-700 dark:text-zinc-400"
+        >
+          ギミックの行を追加
+        </button>
+      </fieldset>
+
+      <button
+        type="submit"
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+      >
+        追加
+      </button>
+    </form>
+  );
+}
+
+function StageManager({ stages }: { stages: Stage[] }) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        ステージ管理
+      </h2>
+      <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        イベント/クエストの攻略メモ用です。ここに登録した敵はダメージ計算の敵選択には使われません。
+      </p>
+
+      <CreateStageForm key={stages.length} />
+
+      {stages.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            登録済みステージ一覧を表示({stages.length}件)
+          </summary>
+          <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+            {stages.map((s) => (
+              <li key={s.id} className="flex flex-col gap-1 py-2 text-sm">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                    <span className="font-medium">{s.name}</span>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {s.event} / {s.difficulty} ・ 敵{s.enemyCount}体
+                    </span>
+                  </div>
+                  <form action={deleteStage}>
+                    <input type="hidden" name="id" value={s.id} />
+                    <button
+                      type="submit"
+                      className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      削除
+                    </button>
+                  </form>
+                </div>
+                {s.enemies.length > 0 && (
+                  <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {s.enemies.map((e) => (
+                      <li key={e.id}>
+                        {e.name}({typeLabel(e.type)}) HP{e.hp.toLocaleString()} ・ ATK
+                        {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {s.mechanics.length > 0 && (
+                  <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    {s.mechanics.map((m) => (
+                      <li key={m.id}>ギミック: {m.mechanic}</li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
 export default function DokkanCalculator({
   characters,
+  enemies,
+  stages,
 }: {
   characters: DokkanCharacter[];
+  enemies: Enemy[];
+  stages: Stage[];
 }) {
   const [baseAtk, setBaseAtk] = useState(10000);
   const [leaderSkillMultiplier, setLeaderSkillMultiplier] = useState(2.7);
@@ -362,7 +728,8 @@ export default function DokkanCalculator({
   const [enemyIsCritical, setEnemyIsCritical] = useState(false);
 
   const [attackerCharacter, setAttackerCharacter] = useState<DokkanCharacter | null>(null);
-  const [enemyCharacter, setEnemyCharacter] = useState<DokkanCharacter | null>(null);
+  const [targetEnemy, setTargetEnemy] = useState<Enemy | null>(null);
+  const [attackerEnemy, setAttackerEnemy] = useState<Enemy | null>(null);
   const [allyCharacter, setAllyCharacter] = useState<DokkanCharacter | null>(null);
 
   const result = useMemo(
@@ -430,14 +797,20 @@ export default function DokkanCalculator({
         </div>
 
         <CharacterManager characters={characters} />
+        <EnemyManager enemies={enemies} />
+        <StageManager stages={stages} />
 
         <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           与ダメージ計算(自分の攻撃)
         </h2>
         <section className="grid grid-cols-1 gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-2">
-          <CharacterSelect
+          <SearchableSelect
             label="キャラクター選択(自動入力)"
-            characters={characters}
+            items={characters}
+            getKey={(c) => c.id}
+            getLabel={characterTag}
+            placeholder="キャラ名で検索"
+            emptyHint='下の「キャラクター管理」から追加すると選択できます'
             onSelect={(c) => {
               setBaseAtk(c.baseAtk);
               setKiMultiplier(c.kiMultiplier);
@@ -475,6 +848,19 @@ export default function DokkanCalculator({
             value={superAttackMultiplier}
             onChange={setSuperAttackMultiplier}
             hint="通常攻撃の場合は1"
+          />
+          <SearchableSelect
+            label="敵選択(自動入力)"
+            items={enemies}
+            getKey={(e) => e.id}
+            getLabel={enemyTag}
+            placeholder="敵名で検索"
+            emptyHint='「敵管理」から追加すると選択できます'
+            onSelect={(e) => {
+              setEnemyDef(e.def);
+              setEnemyDamageReductionPercent(e.damageReductionPercent);
+              setTargetEnemy(e);
+            }}
           />
           <NumberField label="敵DEF" value={enemyDef} onChange={setEnemyDef} step="1" />
           <NumberField
@@ -539,25 +925,33 @@ export default function DokkanCalculator({
               {result.damage.toLocaleString()}
             </span>
           </div>
-          <SourceAttributions characters={[attackerCharacter]} />
+          <SourceAttributions items={[attackerCharacter, targetEnemy]} />
         </section>
 
         <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           被ダメージ計算(敵からの攻撃)
         </h2>
         <section className="grid grid-cols-1 gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-2">
-          <CharacterSelect
-            label="敵キャラクター選択(自動入力)"
-            characters={characters}
-            onSelect={(c) => {
-              setEnemyAtk(c.baseAtk);
-              setEnemySuperAttackMultiplier(c.superAttackMultiplier);
-              setEnemyCharacter(c);
+          <SearchableSelect
+            label="敵選択(自動入力)"
+            items={enemies}
+            getKey={(e) => e.id}
+            getLabel={enemyTag}
+            placeholder="敵名で検索"
+            emptyHint='「敵管理」から追加すると選択できます'
+            onSelect={(e) => {
+              setEnemyAtk(e.atk);
+              setEnemySuperAttackMultiplier(e.superAttackMultiplier);
+              setAttackerEnemy(e);
             }}
           />
-          <CharacterSelect
+          <SearchableSelect
             label="味方キャラクター選択(自動入力)"
-            characters={characters}
+            items={characters}
+            getKey={(c) => c.id}
+            getLabel={characterTag}
+            placeholder="キャラ名で検索"
+            emptyHint='下の「キャラクター管理」から追加すると選択できます'
             onSelect={(c) => {
               setAllyDef(c.baseDef);
               setAllyCharacter(c);
@@ -639,7 +1033,7 @@ export default function DokkanCalculator({
               {incomingResult.damage.toLocaleString()}
             </span>
           </div>
-          <SourceAttributions characters={[enemyCharacter, allyCharacter]} />
+          <SourceAttributions items={[attackerEnemy, allyCharacter]} />
         </section>
       </main>
     </div>

@@ -1,5 +1,7 @@
 import { prisma } from "./prisma";
 import type { DokkanCharacter } from "./characters";
+import type { Enemy } from "./enemies";
+import type { Stage } from "./stages";
 
 export async function getCharacters(): Promise<DokkanCharacter[]> {
   const characters = await prisma.character.findMany({
@@ -17,5 +19,52 @@ export async function getCharacters(): Promise<DokkanCharacter[]> {
     kiMultiplier: c.kiMultiplier,
     superAttackMultiplier: c.superAttackMultiplier,
     sourceUrl: c.sourceUrl,
+  }));
+}
+
+export async function getEnemies(): Promise<Enemy[]> {
+  const enemies = await prisma.enemy.findMany({
+    orderBy: { createdAt: "asc" },
+  });
+
+  return enemies.map((e) => ({
+    id: e.id,
+    name: e.name,
+    type: e.type,
+    atk: e.atk,
+    def: e.def,
+    superAttackMultiplier: e.superAttackMultiplier,
+    damageReductionPercent: e.damageReductionPercent,
+    sourceUrl: e.sourceUrl,
+  }));
+}
+
+export async function getStages(): Promise<Stage[]> {
+  const stages = await prisma.stage.findMany({
+    orderBy: { createdAt: "asc" },
+    include: {
+      enemies: true,
+      mechanics: true,
+    },
+  });
+
+  return stages.map((s) => ({
+    id: s.id,
+    name: s.name,
+    event: s.event,
+    difficulty: s.difficulty,
+    enemyCount: s.enemyCount,
+    enemies: s.enemies.map((se) => ({
+      id: se.id,
+      name: se.name,
+      hp: Number(se.hp),
+      atk: se.atk,
+      def: se.def,
+      type: se.type,
+    })),
+    mechanics: s.mechanics.map((m) => ({
+      id: m.id,
+      mechanic: m.mechanic,
+    })),
   }));
 }
