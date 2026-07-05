@@ -44,4 +44,10 @@ export interface DokkanCharacter {
   superAttackMultiplier: number;
   /** Dragon Ball Z Dokkan Battle Wiki (Fandom) 上の該当キャラページURL。出典表示に使用 */
   sourceUrl: string | null;
+  /** 紐付けられたリンクスキルのID一覧 */
+  linkSkillIds: string[];
+  /** 紐付けられたサポートアイテムのID一覧 */
+  supportItemIds: string[];
+  /** よく組むパーティーメンバーとして登録した他キャラのID一覧 */
+  partyMemberIds: string[];
 }

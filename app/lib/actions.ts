@@ -185,3 +185,82 @@ export async function deleteStage(formData: FormData) {
 
   revalidatePath("/");
 }
+
+export async function createLinkSkill(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const descriptionInput = String(formData.get("description") ?? "").trim();
+  const description = descriptionInput === "" ? null : descriptionInput;
+
+  if (!name) {
+    throw new Error("リンクスキル名は必須です");
+  }
+
+  await prisma.linkSkill.create({ data: { name, description } });
+
+  revalidatePath("/");
+}
+
+export async function deleteLinkSkill(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.linkSkill.delete({ where: { id } });
+
+  revalidatePath("/");
+}
+
+export async function createSupportItem(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const effect = String(formData.get("effect") ?? "").trim();
+
+  if (!name) {
+    throw new Error("サポートアイテム名は必須です");
+  }
+  if (!effect) {
+    throw new Error("効果は必須です");
+  }
+
+  await prisma.supportItem.create({ data: { name, effect } });
+
+  revalidatePath("/");
+}
+
+export async function deleteSupportItem(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.supportItem.delete({ where: { id } });
+
+  revalidatePath("/");
+}
+
+export async function updateCharacterLinks(formData: FormData) {
+  const characterId = String(formData.get("characterId") ?? "");
+  const linkSkillIds = formData.getAll("linkSkillIds").map(String).filter(Boolean);
+  const supportItemIds = formData.getAll("supportItemIds").map(String).filter(Boolean);
+  const partyMemberIds = formData
+    .getAll("partyMemberIds")
+    .map(String)
+    .filter((id) => id !== "" && id !== characterId);
+
+  if (!characterId) {
+    throw new Error("キャラクターを選択してください");
+  }
+
+  await prisma.$transaction([
+    prisma.characterLinkSkill.deleteMany({ where: { characterId } }),
+    prisma.characterLinkSkill.createMany({
+      data: linkSkillIds.map((linkSkillId) => ({ characterId, linkSkillId })),
+    }),
+    prisma.characterSupportItem.deleteMany({ where: { characterId } }),
+    prisma.characterSupportItem.createMany({
+      data: supportItemIds.map((supportItemId) => ({ characterId, supportItemId })),
+    }),
+    prisma.characterPartyMember.deleteMany({ where: { characterId } }),
+    prisma.characterPartyMember.createMany({
+      data: partyMemberIds.map((memberId) => ({ characterId, memberId })),
+    }),
+  ]);
+
+  revalidatePath("/");
+}
