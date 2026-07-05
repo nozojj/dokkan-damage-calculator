@@ -1,5 +1,26 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { PrismaClient } from "../generated/prisma-client/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+
+// This script runs standalone via tsx (outside Next.js/Prisma CLI), so .env isn't auto-loaded.
+function loadDotEnv() {
+  try {
+    const content = readFileSync(resolve(process.cwd(), ".env"), "utf-8");
+    for (const line of content.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const eq = trimmed.indexOf("=");
+      if (eq === -1) continue;
+      const key = trimmed.slice(0, eq).trim();
+      const value = trimmed.slice(eq + 1).trim().replace(/^['"]|['"]$/g, "");
+      if (!(key in process.env)) process.env[key] = value;
+    }
+  } catch {
+    // .env is optional; DATABASE_URL may already be set in the environment
+  }
+}
+loadDotEnv();
 
 const DATA_URL =
   "https://raw.githubusercontent.com/MNprojects/DokkanAPI/main/data/DokkanCharacterData.json";
