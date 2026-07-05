@@ -10,15 +10,6 @@ export const DOKKAN_TYPE_LABELS: Record<DokkanType, string> = {
   PHY: "体(PHY)",
 };
 
-/** 英語表記(属性名のフルスペル) */
-export const DOKKAN_TYPE_LABELS_EN: Record<DokkanType, string> = {
-  STR: "Strength",
-  AGL: "Agility",
-  TEQ: "Technique",
-  INT: "Intelligence",
-  PHY: "Physical Strength",
-};
-
 export type DokkanRarity = "SSR" | "UR" | "LR";
 
 export const DOKKAN_RARITIES: DokkanRarity[] = ["SSR", "UR", "LR"];
