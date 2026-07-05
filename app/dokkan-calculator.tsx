@@ -13,12 +13,11 @@ import {
   DOKKAN_RARITY_LABELS,
   DOKKAN_TYPES,
   DOKKAN_TYPE_LABELS,
-  DOKKAN_TYPE_LABELS_EN,
   type DokkanCharacter,
 } from "./lib/characters";
 
 function typeLabel(type: DokkanCharacter["type"]) {
-  return `${DOKKAN_TYPE_LABELS[type]} ${DOKKAN_TYPE_LABELS_EN[type]}`;
+  return DOKKAN_TYPE_LABELS[type];
 }
 
 function characterTag(c: DokkanCharacter) {
@@ -91,6 +90,8 @@ function SourceAttributions({
   );
 }
 
+const CHARACTER_SEARCH_RESULT_LIMIT = 50;
+
 function CharacterSelect({
   label,
   characters,
@@ -100,32 +101,68 @@ function CharacterSelect({
   characters: DokkanCharacter[];
   onSelect: (character: DokkanCharacter) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const matches = q
+      ? characters.filter((c) => characterTag(c).toLowerCase().includes(q))
+      : characters;
+    return matches.slice(0, CHARACTER_SEARCH_RESULT_LIMIT);
+  }, [characters, query]);
+
   return (
-    <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+    <div className="relative flex flex-col gap-1 text-sm sm:col-span-2">
       <span className="font-medium text-zinc-800 dark:text-zinc-200">{label}</span>
-      <select
-        defaultValue=""
+      <input
+        type="text"
+        value={query}
+        disabled={characters.length === 0}
+        placeholder={characters.length === 0 ? "未登録" : "キャラ名で検索"}
         onChange={(e) => {
-          const character = characters.find((c) => c.id === e.target.value);
-          if (character) onSelect(character);
+          setQuery(e.target.value);
+          setIsOpen(true);
         }}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-      >
-        <option value="">
-          {characters.length === 0 ? "未登録" : "選択してください"}
-        </option>
-        {characters.map((c) => (
-          <option key={c.id} value={c.id}>
-            {characterTag(c)}
-          </option>
-        ))}
-      </select>
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+      />
       {characters.length === 0 && (
         <span className="text-xs text-zinc-500 dark:text-zinc-400">
           下の「キャラクター管理」から追加すると選択できます
         </span>
       )}
-    </label>
+      {isOpen && characters.length > 0 && (
+        <ul className="absolute top-full z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-zinc-300 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">該当するキャラがいません</li>
+          ) : (
+            filtered.map((c) => (
+              <li key={c.id}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    onSelect(c);
+                    setQuery(characterTag(c));
+                    setIsOpen(false);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  {characterTag(c)}
+                </button>
+              </li>
+            ))
+          )}
+          {characters.length > filtered.length && (
+            <li className="px-3 py-1 text-xs text-zinc-400 dark:text-zinc-500">
+              他{characters.length - filtered.length}件あります。検索で絞り込んでください
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -255,37 +292,47 @@ function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
       </form>
 
       {characters.length > 0 && (
-        <ul className="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800">
-          {characters.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-              <span className="text-zinc-800 dark:text-zinc-200">
-                {characterTag(c)}
-                <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  ATK{c.baseAtk} / DEF{c.baseDef} / 気力×{c.kiMultiplier} / 必殺×{c.superAttackMultiplier}
-                </span>
-                {c.sourceUrl && (
-                  <a
-                    href={c.sourceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="ml-2 text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-                  >
-                    出典
-                  </a>
-                )}
-              </span>
-              <form action={deleteCharacter}>
-                <input type="hidden" name="id" value={c.id} />
-                <button
-                  type="submit"
-                  className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
-                >
-                  削除
-                </button>
-              </form>
-            </li>
-          ))}
-        </ul>
+        <details className="text-sm">
+          <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            登録済みキャラクター一覧を表示({characters.length}件)
+          </summary>
+          <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+            {characters.map((c) => (
+              <li key={c.id} className="flex items-start justify-between gap-2 py-2 text-sm">
+                <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {typeLabel(c.type)} / {DOKKAN_RARITY_LABELS[c.rarity]} / {DOKKAN_CLASS_LABELS[c.class]}
+                  </span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    攻撃{c.baseAtk.toLocaleString()} ・ 防御{c.baseDef.toLocaleString()} ・ 必殺倍率×{c.superAttackMultiplier}
+                  </span>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {c.sourceUrl && (
+                    <a
+                      href={c.sourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                    >
+                      出典
+                    </a>
+                  )}
+                  <form action={deleteCharacter}>
+                    <input type="hidden" name="id" value={c.id} />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      削除
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </section>
   );
