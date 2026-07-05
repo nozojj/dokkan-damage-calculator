@@ -9,6 +9,10 @@ export interface StageEnemy {
   type: DokkanType;
   /** この敵の必殺技倍率。被ダメージ計算(敵からの攻撃)に使用 */
   superAttackMultiplier: number;
+  /** 敵のガード・被ダメージ軽減率(%) */
+  guardReduction: number;
+  /** 複数体ウェーブの表示順 */
+  waveOrder: number;
 }
 
 export interface StageMechanic {
@@ -23,6 +27,7 @@ export interface Stage {
   event: string;
   difficulty: string;
   enemyCount: number;
+  sourceUrl: string | null;
   enemies: StageEnemy[];
   mechanics: StageMechanic[];
 }

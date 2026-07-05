@@ -43,7 +43,7 @@ export async function getStages(): Promise<Stage[]> {
   const stages = await prisma.stage.findMany({
     orderBy: { createdAt: "asc" },
     include: {
-      enemies: true,
+      enemies: { orderBy: { waveOrder: "asc" } },
       mechanics: true,
     },
   });
@@ -54,6 +54,7 @@ export async function getStages(): Promise<Stage[]> {
     event: s.event,
     difficulty: s.difficulty,
     enemyCount: s.enemyCount,
+    sourceUrl: s.sourceUrl,
     enemies: s.enemies.map((se) => ({
       id: se.id,
       name: se.name,
@@ -62,6 +63,8 @@ export async function getStages(): Promise<Stage[]> {
       def: se.def,
       type: se.type,
       superAttackMultiplier: se.superAttackMultiplier,
+      guardReduction: se.guardReduction,
+      waveOrder: se.waveOrder,
     })),
     mechanics: s.mechanics.map((m) => ({
       id: m.id,

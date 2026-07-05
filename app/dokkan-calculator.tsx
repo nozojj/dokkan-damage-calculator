@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   calculateDamage,
   TYPE_MATCHUP_COEFFICIENT,
@@ -542,12 +542,24 @@ function CreateStageForm() {
         </label>
       </div>
 
+      <label className="flex flex-col gap-1 text-sm">
+        <span className="font-medium text-zinc-800 dark:text-zinc-200">
+          出典URL(任意)
+        </span>
+        <input
+          type="url"
+          name="sourceUrl"
+          placeholder="https://dbz-dokkanbattle.fandom.com/wiki/..."
+          className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+        />
+      </label>
+
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
           このステージの敵(汎用の敵管理とは別に、このステージ専用として登録)
         </legend>
         {enemyRows.map((rowId) => (
-          <div key={rowId} className="grid grid-cols-2 gap-2 sm:grid-cols-7">
+          <div key={rowId} className="grid grid-cols-2 gap-2 sm:grid-cols-8">
             <input
               type="text"
               name="enemyName"
@@ -578,6 +590,14 @@ function CreateStageForm() {
               name="enemySuperAttackMultiplier"
               placeholder="必殺倍率"
               defaultValue={1}
+              className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            <input
+              type="number"
+              step="any"
+              name="enemyGuardReduction"
+              placeholder="軽減%"
+              defaultValue={0}
               className="rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
             <div className="flex gap-1">
@@ -645,67 +665,70 @@ function CreateStageForm() {
   );
 }
 
-function StageManager({ stages }: { stages: Stage[] }) {
+const NEW_STAGE_OPTION = "__new__";
+
+function RegisteredStagesList({ stages }: { stages: Stage[] }) {
+  if (stages.length === 0) return null;
+
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-        ステージ管理
-      </h2>
-      <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-        イベント/クエストの攻略メモ用です。ここに登録した敵はダメージ計算の敵選択には使われません。
-      </p>
-
-      <CreateStageForm key={stages.length} />
-
-      {stages.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-            登録済みステージ一覧を表示({stages.length}件)
-          </summary>
-          <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
-            {stages.map((s) => (
-              <li key={s.id} className="flex flex-col gap-1 py-2 text-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
-                    <span className="font-medium">{s.name}</span>
-                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {s.event} / {s.difficulty} ・ 敵{s.enemyCount}体
-                    </span>
-                  </div>
-                  <form action={deleteStage}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <button
-                      type="submit"
-                      className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
-                    >
-                      削除
-                    </button>
-                  </form>
-                </div>
-                {s.enemies.length > 0 && (
-                  <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {s.enemies.map((e) => (
-                      <li key={e.id}>
-                        {e.name}({typeLabel(e.type)}) HP{e.hp.toLocaleString()} ・ ATK
-                        {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
-                        {e.superAttackMultiplier}
-                      </li>
-                    ))}
-                  </ul>
+    <details className="text-sm sm:col-span-2">
+      <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+        登録済みステージ一覧を表示({stages.length}件)
+      </summary>
+      <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+        {stages.map((s) => (
+          <li key={s.id} className="flex flex-col gap-1 py-2 text-sm">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                <span className="font-medium">{s.name}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {s.event} / {s.difficulty} ・ 敵{s.enemyCount}体
+                </span>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                {s.sourceUrl && (
+                  <a
+                    href={s.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  >
+                    出典
+                  </a>
                 )}
-                {s.mechanics.length > 0 && (
-                  <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    {s.mechanics.map((m) => (
-                      <li key={m.id}>ギミック: {m.mechanic}</li>
-                    ))}
-                  </ul>
-                )}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-    </section>
+                <form action={deleteStage}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                  >
+                    削除
+                  </button>
+                </form>
+              </div>
+            </div>
+            {s.enemies.length > 0 && (
+              <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                {s.enemies.map((e) => (
+                  <li key={e.id}>
+                    {e.name}({typeLabel(e.type)}) HP{e.hp.toLocaleString()} ・ ATK
+                    {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
+                    {e.superAttackMultiplier} ・ 軽減{e.guardReduction}%
+                  </li>
+                ))}
+              </ul>
+            )}
+            {s.mechanics.length > 0 && (
+              <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                {s.mechanics.map((m) => (
+                  <li key={m.id}>ギミック: {m.mechanic}</li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -757,6 +780,18 @@ export default function DokkanCalculator({
     () => selectedDamageStage?.enemies.find((e) => e.id === stageDamageEnemyId) ?? null,
     [selectedDamageStage, stageDamageEnemyId]
   );
+
+  const knownStageIdsRef = useRef(new Set(stages.map((s) => s.id)));
+  useEffect(() => {
+    if (stageDamageStageId === NEW_STAGE_OPTION) {
+      const newStage = stages.find((s) => !knownStageIdsRef.current.has(s.id));
+      if (newStage) {
+        setStageDamageStageId(newStage.id);
+        setStageDamageEnemyId("");
+      }
+    }
+    knownStageIdsRef.current = new Set(stages.map((s) => s.id));
+  }, [stages, stageDamageStageId]);
 
   const result = useMemo(
     () =>
@@ -846,7 +881,6 @@ export default function DokkanCalculator({
 
         <CharacterManager characters={characters} />
         <EnemyManager enemies={enemies} />
-        <StageManager stages={stages} />
 
         <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           与ダメージ計算(自分の攻撃)
@@ -1099,18 +1133,20 @@ export default function DokkanCalculator({
               className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             >
               <option value="">選択してください</option>
+              <option value={NEW_STAGE_OPTION}>+ 新しいステージを登録</option>
               {stages.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}({s.event} / {s.difficulty})
                 </option>
               ))}
             </select>
-            {stages.length === 0 && (
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                「ステージ管理」から追加すると選択できます
-              </span>
-            )}
           </label>
+
+          {stageDamageStageId === NEW_STAGE_OPTION && (
+            <div className="sm:col-span-2 rounded-md border border-zinc-300 p-4 dark:border-zinc-700">
+              <CreateStageForm key={stages.length} />
+            </div>
+          )}
 
           {selectedDamageStage && (
             <label className="flex flex-col gap-1 text-sm sm:col-span-2">
@@ -1135,6 +1171,8 @@ export default function DokkanCalculator({
               )}
             </label>
           )}
+
+          <RegisteredStagesList stages={stages} />
 
           <SearchableSelect
             label="被弾するキャラクター選択(自動入力)"
@@ -1216,6 +1254,7 @@ export default function DokkanCalculator({
                   {stageIncomingResult.damage.toLocaleString()}
                 </span>
               </div>
+              <SourceAttributions items={[selectedDamageStage]} />
             </>
           )}
         </section>

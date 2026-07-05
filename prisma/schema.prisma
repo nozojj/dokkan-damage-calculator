@@ -67,6 +67,7 @@ model Stage {
   difficulty String
   /// 登録済み敵数のキャッシュ(enemiesの件数)
   enemyCount Int             @default(0)
+  sourceUrl  String?
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
   enemies    StageEnemy[]
@@ -83,6 +84,10 @@ model StageEnemy {
   type                  DokkanType
   /// この敵の必殺技倍率。被ダメージ計算(敵からの攻撃)に使用
   superAttackMultiplier Float      @default(1)
+  /// 敵のガード・被ダメージ軽減率(%)
+  guardReduction        Float      @default(0)
+  /// 複数体ウェーブの表示順(登録順に自動採番)
+  waveOrder             Int        @default(0)
   stageId               String
   stage                 Stage      @relation(fields: [stageId], references: [id], onDelete: Cascade)
 }

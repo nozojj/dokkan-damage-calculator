@@ -117,6 +117,8 @@ export async function createStage(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const event = String(formData.get("event") ?? "").trim();
   const difficulty = String(formData.get("difficulty") ?? "").trim();
+  const sourceUrlInput = String(formData.get("sourceUrl") ?? "").trim();
+  const sourceUrl = sourceUrlInput === "" ? null : sourceUrlInput;
 
   const enemyNames = formData.getAll("enemyName").map((v) => String(v).trim());
   const enemyHps = formData.getAll("enemyHp").map(String);
@@ -124,6 +126,7 @@ export async function createStage(formData: FormData) {
   const enemyDefs = formData.getAll("enemyDef").map(String);
   const enemyTypes = formData.getAll("enemyType").map(String) as DokkanType[];
   const enemySuperAttackMultipliers = formData.getAll("enemySuperAttackMultiplier").map(String);
+  const enemyGuardReductions = formData.getAll("enemyGuardReduction").map(String);
 
   const mechanics = formData
     .getAll("mechanic")
@@ -148,8 +151,10 @@ export async function createStage(formData: FormData) {
       def: Math.max(0, Math.trunc(Number(enemyDefs[i])) || 0),
       type: enemyTypes[i],
       superAttackMultiplier: Number(enemySuperAttackMultipliers[i]) || 1,
+      guardReduction: Number(enemyGuardReductions[i]) || 0,
     }))
-    .filter((e) => e.name !== "");
+    .filter((e) => e.name !== "")
+    .map((e, i) => ({ ...e, waveOrder: i }));
 
   for (const e of enemies) {
     if (!DOKKAN_TYPES.includes(e.type)) {
@@ -162,6 +167,7 @@ export async function createStage(formData: FormData) {
       name,
       event,
       difficulty,
+      sourceUrl,
       enemyCount: enemies.length,
       enemies: { create: enemies },
       mechanics: { create: mechanics.map((mechanic) => ({ mechanic })) },
