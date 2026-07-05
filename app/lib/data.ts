@@ -16,5 +16,6 @@ export async function getCharacters(): Promise<DokkanCharacter[]> {
     baseDef: c.baseDef,
     kiMultiplier: c.kiMultiplier,
     superAttackMultiplier: c.superAttackMultiplier,
+    sourceUrl: c.sourceUrl,
   }));
 }

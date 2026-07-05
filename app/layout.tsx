@@ -27,7 +27,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="flex flex-1 flex-col">{children}</div>
+        <footer className="border-t border-zinc-200 bg-zinc-50 px-4 py-4 text-center text-xs text-zinc-500 dark:border-zinc-800 dark:bg-black dark:text-zinc-400">
+          キャラクターデータの一部は Dragon Ball Z Dokkan Battle Wiki (Fandom) の情報を基にしており、CC BY-SA 3.0 のもとで提供されています。
+        </footer>
+      </body>
     </html>
   );
 }

@@ -20,6 +20,8 @@ export async function createCharacter(formData: FormData) {
   const baseDef = Number(formData.get("baseDef"));
   const kiMultiplier = Number(formData.get("kiMultiplier"));
   const superAttackMultiplier = Number(formData.get("superAttackMultiplier"));
+  const sourceUrlInput = String(formData.get("sourceUrl") ?? "").trim();
+  const sourceUrl = sourceUrlInput === "" ? null : sourceUrlInput;
 
   if (!name) {
     throw new Error("キャラクター名は必須です");
@@ -51,6 +53,7 @@ export async function createCharacter(formData: FormData) {
       baseDef,
       kiMultiplier,
       superAttackMultiplier,
+      sourceUrl,
     },
   });
 

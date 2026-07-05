@@ -50,4 +50,6 @@ export interface DokkanCharacter {
   kiMultiplier: number;
   /** 必殺技倍率の基準値 (例: 超特大Lv1なら3.5) */
   superAttackMultiplier: number;
+  /** Dragon Ball Z Dokkan Battle Wiki (Fandom) 上の該当キャラページURL。出典表示に使用 */
+  sourceUrl: string | null;
 }
