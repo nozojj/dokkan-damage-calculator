@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   calculateDamage,
   TYPE_MATCHUP_COEFFICIENT,
@@ -13,6 +14,7 @@ import {
   DOKKAN_RARITY_LABELS,
   DOKKAN_TYPES,
   DOKKAN_TYPE_LABELS,
+  characterTag,
   type DokkanCharacter,
   type DokkanType,
 } from "./lib/characters";
@@ -20,13 +22,13 @@ import type { Enemy } from "./lib/enemies";
 import type { Stage } from "./lib/stages";
 import type { LinkSkill } from "./lib/linkSkills";
 import type { SupportItem } from "./lib/supportItems";
+import { NumberField } from "./components/number-field";
+import { SearchableSelect } from "./components/searchable-select";
+import { SourceAttributions } from "./components/source-attributions";
+import { TypeLabel } from "./components/type-label";
 
 function typeLabel(type: DokkanType) {
   return DOKKAN_TYPE_LABELS[type];
-}
-
-function characterTag(c: DokkanCharacter) {
-  return `[${typeLabel(c.type)} / ${DOKKAN_RARITY_LABELS[c.rarity]} / ${DOKKAN_CLASS_LABELS[c.class]}] ${c.name}`;
 }
 
 function enemyTag(e: Enemy) {
@@ -52,146 +54,6 @@ const TYPE_MATCHUP_OPTIONS: { value: TypeMatchup; label: string }[] = [
   { value: "neutral", label: `五分 ×${TYPE_MATCHUP_COEFFICIENT.neutral}` },
   { value: "disadvantage", label: `不利 ×${TYPE_MATCHUP_COEFFICIENT.disadvantage}` },
 ];
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  step = "any",
-  hint,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  step?: string;
-  hint?: string;
-}) {
-  return (
-    <label className="flex flex-col gap-1 text-sm">
-      <span className="font-medium text-zinc-800 dark:text-zinc-200">{label}</span>
-      <input
-        type="number"
-        step={step}
-        value={Number.isNaN(value) ? "" : value}
-        onChange={(e) => onChange(e.target.valueAsNumber)}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-      />
-      {hint && <span className="text-xs text-zinc-500 dark:text-zinc-400">{hint}</span>}
-    </label>
-  );
-}
-
-function SourceAttributions({
-  items,
-}: {
-  items: ({ id: string; name: string; sourceUrl: string | null } | null)[];
-}) {
-  const withSource = items.filter(
-    (item): item is { id: string; name: string; sourceUrl: string } => !!item?.sourceUrl
-  );
-
-  if (withSource.length === 0) return null;
-
-  return (
-    <div className="mt-3 flex flex-col gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
-      {withSource.map((item) => (
-        <p key={item.id} className="text-xs text-zinc-500 dark:text-zinc-400">
-          出典:{" "}
-          <a
-            href={item.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="underline hover:text-zinc-700 dark:hover:text-zinc-200"
-          >
-            {item.name} - Dragon Ball Z Dokkan Battle Wiki
-          </a>
-        </p>
-      ))}
-    </div>
-  );
-}
-
-const SEARCH_RESULT_LIMIT = 50;
-
-function SearchableSelect<T>({
-  label,
-  items,
-  getKey,
-  getLabel,
-  onSelect,
-  placeholder = "検索",
-  emptyHint = "登録すると選択できます",
-}: {
-  label: string;
-  items: T[];
-  getKey: (item: T) => string;
-  getLabel: (item: T) => string;
-  onSelect: (item: T) => void;
-  placeholder?: string;
-  emptyHint?: string;
-}) {
-  const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const matches = q
-      ? items.filter((item) => getLabel(item).toLowerCase().includes(q))
-      : items;
-    return matches.slice(0, SEARCH_RESULT_LIMIT);
-  }, [items, query, getLabel]);
-
-  return (
-    <div className="relative flex flex-col gap-1 text-sm sm:col-span-2">
-      <span className="font-medium text-zinc-800 dark:text-zinc-200">{label}</span>
-      <input
-        type="text"
-        value={query}
-        disabled={items.length === 0}
-        placeholder={items.length === 0 ? "未登録" : placeholder}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-      />
-      {items.length === 0 && (
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">{emptyHint}</span>
-      )}
-      {isOpen && items.length > 0 && (
-        <ul className="absolute top-full z-10 mt-1 max-h-64 w-full overflow-auto rounded-md border border-zinc-300 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-          {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-zinc-500 dark:text-zinc-400">該当がありません</li>
-          ) : (
-            filtered.map((item) => (
-              <li key={getKey(item)}>
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onSelect(item);
-                    setQuery(getLabel(item));
-                    setIsOpen(false);
-                  }}
-                  className="block w-full px-3 py-2 text-left text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  {getLabel(item)}
-                </button>
-              </li>
-            ))
-          )}
-          {items.length > filtered.length && (
-            <li className="px-3 py-1 text-xs text-zinc-400 dark:text-zinc-500">
-              他{items.length - filtered.length}件あります。検索で絞り込んでください
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 function CharacterManager({
   characters,
@@ -304,6 +166,21 @@ function CharacterManager({
             className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">
+            リーダースキルATK倍率(任意)
+          </span>
+          <input
+            type="number"
+            name="leaderSkillMultiplier"
+            step="any"
+            placeholder="例: 1.7"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            パーティ編成のリーダースキル合成プレビュー用
+          </span>
+        </label>
         <label className="flex flex-col gap-1 text-sm sm:col-span-2">
           <span className="font-medium text-zinc-800 dark:text-zinc-200">
             出典URL(Dokkan Battle Wiki)
@@ -337,10 +214,11 @@ function CharacterManager({
                 <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
                   <span className="font-medium">{c.name}</span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {typeLabel(c.type)} / {DOKKAN_RARITY_LABELS[c.rarity]} / {DOKKAN_CLASS_LABELS[c.class]}
+                    <TypeLabel type={c.type} /> / {DOKKAN_RARITY_LABELS[c.rarity]} / {DOKKAN_CLASS_LABELS[c.class]}
                   </span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     攻撃{c.baseAtk.toLocaleString()} ・ 防御{c.baseDef.toLocaleString()} ・ 必殺倍率×{c.superAttackMultiplier}
+                    {c.leaderSkillMultiplier != null && ` ・ リーダー倍率×${c.leaderSkillMultiplier}`}
                   </span>
                   {(c.linkSkillIds.length > 0 ||
                     c.supportItemIds.length > 0 ||
@@ -505,7 +383,9 @@ function EnemyManager({ enemies }: { enemies: Enemy[] }) {
               <li key={e.id} className="flex items-start justify-between gap-2 py-2 text-sm">
                 <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
                   <span className="font-medium">{e.name}</span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{typeLabel(e.type)}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <TypeLabel type={e.type} />
+                  </span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     ATK{e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
                     {e.superAttackMultiplier} ・ 軽減{e.damageReductionPercent}%
@@ -1059,7 +939,7 @@ function RegisteredStagesList({ stages }: { stages: Stage[] }) {
               <ul className="ml-2 flex flex-col gap-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                 {s.enemies.map((e) => (
                   <li key={e.id}>
-                    {e.name}({typeLabel(e.type)}) HP{e.hp.toLocaleString()} ・ ATK
+                    {e.name}(<TypeLabel type={e.type} />) HP{e.hp.toLocaleString()} ・ ATK
                     {e.atk.toLocaleString()} ・ DEF{e.def.toLocaleString()} ・ 必殺倍率×
                     {e.superAttackMultiplier} ・ 軽減{e.guardReduction}%
                   </li>
@@ -1104,17 +984,8 @@ export default function DokkanCalculator({
   const [typeMatchup, setTypeMatchup] = useState<TypeMatchup>("advantage");
   const [isCritical, setIsCritical] = useState(false);
 
-  const [enemyAtk, setEnemyAtk] = useState(30000);
-  const [enemySuperAttackMultiplier, setEnemySuperAttackMultiplier] = useState(1);
-  const [allyDef, setAllyDef] = useState(8000);
-  const [allyDamageReductionPercent, setAllyDamageReductionPercent] = useState(0);
-  const [incomingTypeMatchup, setIncomingTypeMatchup] = useState<TypeMatchup>("neutral");
-  const [enemyIsCritical, setEnemyIsCritical] = useState(false);
-
   const [attackerCharacter, setAttackerCharacter] = useState<DokkanCharacter | null>(null);
   const [targetEnemy, setTargetEnemy] = useState<Enemy | null>(null);
-  const [attackerEnemy, setAttackerEnemy] = useState<Enemy | null>(null);
-  const [allyCharacter, setAllyCharacter] = useState<DokkanCharacter | null>(null);
 
   const [stageDamageStageId, setStageDamageStageId] = useState("");
   const [stageDamageEnemyId, setStageDamageEnemyId] = useState("");
@@ -1170,30 +1041,6 @@ export default function DokkanCalculator({
       enemyDamageReductionPercent,
       typeMatchup,
       isCritical,
-    ]
-  );
-
-  const incomingResult = useMemo(
-    () =>
-      calculateDamage({
-        baseAtk: enemyAtk,
-        leaderSkillMultiplier: 1,
-        passiveMultiplier: 1,
-        otherAtkMultiplier: 1,
-        kiMultiplier: 1,
-        superAttackMultiplier: enemySuperAttackMultiplier,
-        enemyDef: allyDef,
-        enemyDamageReductionPercent: allyDamageReductionPercent,
-        typeMatchup: incomingTypeMatchup,
-        isCritical: enemyIsCritical,
-      }),
-    [
-      enemyAtk,
-      enemySuperAttackMultiplier,
-      allyDef,
-      allyDamageReductionPercent,
-      incomingTypeMatchup,
-      enemyIsCritical,
     ]
   );
 
@@ -1369,113 +1216,13 @@ export default function DokkanCalculator({
           <SourceAttributions items={[attackerCharacter, targetEnemy]} />
         </section>
 
-        <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-          被ダメージ計算(敵からの攻撃)
-        </h2>
-        <section className="grid grid-cols-1 gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 sm:grid-cols-2">
-          <SearchableSelect
-            label="敵選択(自動入力)"
-            items={enemies}
-            getKey={(e) => e.id}
-            getLabel={enemyTag}
-            placeholder="敵名で検索"
-            emptyHint='「敵管理」から追加すると選択できます'
-            onSelect={(e) => {
-              setEnemyAtk(e.atk);
-              setEnemySuperAttackMultiplier(e.superAttackMultiplier);
-              setAttackerEnemy(e);
-            }}
-          />
-          <SearchableSelect
-            label="味方キャラクター選択(自動入力)"
-            items={characters}
-            getKey={(c) => c.id}
-            getLabel={characterTag}
-            placeholder="キャラ名で検索"
-            emptyHint='下の「キャラクター管理」から追加すると選択できます'
-            onSelect={(c) => {
-              setAllyDef(c.baseDef);
-              setAllyCharacter(c);
-            }}
-          />
-          <NumberField
-            label="敵ATK"
-            value={enemyAtk}
-            onChange={setEnemyAtk}
-            step="1"
-            hint="敵の最終ATK(敵側のリーダー/パッシブ等込みの数値)"
-          />
-          <NumberField
-            label="敵必殺技倍率"
-            value={enemySuperAttackMultiplier}
-            onChange={setEnemySuperAttackMultiplier}
-            hint="敵の通常攻撃なら1"
-          />
-          <NumberField label="味方DEF" value={allyDef} onChange={setAllyDef} step="1" />
-          <NumberField
-            label="味方ダメージ軽減率(%)"
-            value={allyDamageReductionPercent}
-            onChange={setAllyDamageReductionPercent}
-            hint="ガード・被ダメ軽減パッシブなど。無ければ0"
-          />
-
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">属性相性</span>
-            <select
-              value={incomingTypeMatchup}
-              onChange={(e) => setIncomingTypeMatchup(e.target.value as TypeMatchup)}
-              disabled={enemyIsCritical}
-              className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-            >
-              {TYPE_MATCHUP_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              敵の属性が味方に対して有利/不利かで選択
-            </span>
-          </label>
-
-          <label className="flex items-center gap-2 text-sm font-medium text-zinc-800 dark:text-zinc-200 sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={enemyIsCritical}
-              onChange={(e) => setEnemyIsCritical(e.target.checked)}
-              className="h-4 w-4"
-            />
-            敵が会心(クリティカル)を発生
-            <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
-              味方DEFを無視し、ダメージ倍率が固定1.875倍になります
-            </span>
-          </label>
-        </section>
-
-        <section className="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">計算結果</h2>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
-            <dt>参照DEF(会心時は0)</dt>
-            <dd className="text-right tabular-nums">
-              {incomingResult.effectiveDef.toLocaleString()}
-            </dd>
-            <dt>ATK-DEF</dt>
-            <dd className="text-right tabular-nums">
-              {Math.floor(incomingResult.atkMinusDef).toLocaleString()}
-            </dd>
-            <dt>適用係数</dt>
-            <dd className="text-right tabular-nums">×{incomingResult.coefficient}</dd>
-          </dl>
-          <div className="mt-2 flex items-baseline justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
-            <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              被ダメージ
-            </span>
-            <span className="text-3xl font-bold text-zinc-900 dark:text-zinc-50 tabular-nums">
-              {incomingResult.damage.toLocaleString()}
-            </span>
-          </div>
-          <SourceAttributions items={[attackerEnemy, allyCharacter]} />
-        </section>
+        <p className="rounded-lg border border-zinc-200 bg-white p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
+          被ダメージ計算(敵からの攻撃)は「
+          <Link href="/tools/incoming-damage" className="underline hover:text-zinc-900 dark:hover:text-zinc-100">
+            被ダメージ計算(パーティ)
+          </Link>
+          」に移動しました。保存済みパーティを選ぶと6人分の被ダメージを一括で計算できます。
+        </p>
 
         <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           ステージ被ダメージ計算(選択した1キャラ分)

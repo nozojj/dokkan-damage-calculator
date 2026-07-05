@@ -36,6 +36,8 @@ model Character {
   baseDef               Int
   kiMultiplier          Float
   superAttackMultiplier Float
+  /// リーダースキルのATK倍率(任意)。パーティ編成でのリーダースキル合成プレビューに使用
+  leaderSkillMultiplier Float?
   /// Dragon Ball Z Dokkan Battle Wiki (Fandom) 上の該当キャラページURL。CC BY-SA 3.0の出典表示に使用
   sourceUrl             String?
   /// Wikiインポート元の外部ID(DokkanAPIのカードID)。再インポート時の重複防止用
@@ -47,6 +49,28 @@ model Character {
   partyMembers          CharacterPartyMember[] @relation("PartyOwner")
   /// このキャラを他キャラのパーティーメンバーとして登録している側からの参照
   partyMemberOf         CharacterPartyMember[] @relation("PartyMemberRef")
+  partyMemberships      PartyMember[]
+}
+
+/// 保存済みパーティ編成(6スロット)。被ダメ計算でメンバー全員分を一括計算するために使用
+model Party {
+  id        String        @id @default(cuid())
+  name      String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  members   PartyMember[]
+}
+
+model PartyMember {
+  id          String    @id @default(cuid())
+  partyId     String
+  characterId String
+  /// 0=リーダー, 1-4=サブ, 5=フレンド枠。隣接スロット同士でリンクスキルが発動する判定に使用
+  slotIndex   Int
+  party       Party     @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, slotIndex])
 }
 
 /// リンクスキルの共通マスタ。同じリンク名を持つキャラ同士が隣接すると発動する(Dokkan本来の仕様)

@@ -11,6 +11,12 @@ import {
   type DokkanType,
 } from "./characters";
 
+function revalidateAll() {
+  revalidatePath("/");
+  revalidatePath("/tools/party-builder");
+  revalidatePath("/tools/incoming-damage");
+}
+
 export async function createCharacter(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "") as DokkanType;
@@ -20,6 +26,9 @@ export async function createCharacter(formData: FormData) {
   const baseDef = Number(formData.get("baseDef"));
   const kiMultiplier = Number(formData.get("kiMultiplier"));
   const superAttackMultiplier = Number(formData.get("superAttackMultiplier"));
+  const leaderSkillMultiplierInput = String(formData.get("leaderSkillMultiplier") ?? "").trim();
+  const leaderSkillMultiplier =
+    leaderSkillMultiplierInput === "" ? null : Number(leaderSkillMultiplierInput);
   const sourceUrlInput = String(formData.get("sourceUrl") ?? "").trim();
   const sourceUrl = sourceUrlInput === "" ? null : sourceUrlInput;
 
@@ -38,7 +47,8 @@ export async function createCharacter(formData: FormData) {
   if (
     [baseAtk, baseDef, kiMultiplier, superAttackMultiplier].some((n) =>
       Number.isNaN(n)
-    )
+    ) ||
+    (leaderSkillMultiplier !== null && Number.isNaN(leaderSkillMultiplier))
   ) {
     throw new Error("数値項目が不正です");
   }
@@ -53,11 +63,12 @@ export async function createCharacter(formData: FormData) {
       baseDef,
       kiMultiplier,
       superAttackMultiplier,
+      leaderSkillMultiplier,
       sourceUrl,
     },
   });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function deleteCharacter(formData: FormData) {
@@ -66,7 +77,7 @@ export async function deleteCharacter(formData: FormData) {
 
   await prisma.character.delete({ where: { id } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function createEnemy(formData: FormData) {
@@ -101,7 +112,7 @@ export async function createEnemy(formData: FormData) {
     },
   });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function deleteEnemy(formData: FormData) {
@@ -110,7 +121,7 @@ export async function deleteEnemy(formData: FormData) {
 
   await prisma.enemy.delete({ where: { id } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function createStage(formData: FormData) {
@@ -174,7 +185,7 @@ export async function createStage(formData: FormData) {
     },
   });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function deleteStage(formData: FormData) {
@@ -183,7 +194,7 @@ export async function deleteStage(formData: FormData) {
 
   await prisma.stage.delete({ where: { id } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function createLinkSkill(formData: FormData) {
@@ -197,7 +208,7 @@ export async function createLinkSkill(formData: FormData) {
 
   await prisma.linkSkill.create({ data: { name, description } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function deleteLinkSkill(formData: FormData) {
@@ -206,7 +217,7 @@ export async function deleteLinkSkill(formData: FormData) {
 
   await prisma.linkSkill.delete({ where: { id } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function createSupportItem(formData: FormData) {
@@ -222,7 +233,7 @@ export async function createSupportItem(formData: FormData) {
 
   await prisma.supportItem.create({ data: { name, effect } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function deleteSupportItem(formData: FormData) {
@@ -231,7 +242,7 @@ export async function deleteSupportItem(formData: FormData) {
 
   await prisma.supportItem.delete({ where: { id } });
 
-  revalidatePath("/");
+  revalidateAll();
 }
 
 export async function updateCharacterLinks(formData: FormData) {
@@ -262,5 +273,47 @@ export async function updateCharacterLinks(formData: FormData) {
     }),
   ]);
 
-  revalidatePath("/");
+  revalidateAll();
+}
+
+export async function createParty(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+
+  if (!name) {
+    throw new Error("パーティ名は必須です");
+  }
+
+  await prisma.party.create({ data: { name } });
+
+  revalidateAll();
+}
+
+export async function deleteParty(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  await prisma.party.delete({ where: { id } });
+
+  revalidateAll();
+}
+
+export async function updatePartyMembers(formData: FormData) {
+  const partyId = String(formData.get("partyId") ?? "");
+  if (!partyId) {
+    throw new Error("パーティを選択してください");
+  }
+
+  const members = Array.from({ length: 6 }, (_, slotIndex) => {
+    const characterId = String(formData.get(`slot${slotIndex}`) ?? "").trim();
+    return { slotIndex, characterId };
+  }).filter((m) => m.characterId !== "");
+
+  await prisma.$transaction([
+    prisma.partyMember.deleteMany({ where: { partyId } }),
+    prisma.partyMember.createMany({
+      data: members.map((m) => ({ partyId, slotIndex: m.slotIndex, characterId: m.characterId })),
+    }),
+  ]);
+
+  revalidateAll();
 }
