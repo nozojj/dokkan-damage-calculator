@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DokkanType {
+  STR
+  AGL
+  TEQ
+  INT
+  PHY
+}
+
+enum DokkanRarity {
+  SSR
+  LR
+}
+
+enum DokkanClass {
+  SUPER
+  EXTREME
+}
+
+model Character {
+  id                    String       @id @default(cuid())
+  name                  String
+  type                  DokkanType
+  rarity                DokkanRarity
+  class                 DokkanClass
+  baseAtk               Int
+  baseDef               Int
+  kiMultiplier          Float
+  superAttackMultiplier Float
+  createdAt             DateTime     @default(now())
+}
