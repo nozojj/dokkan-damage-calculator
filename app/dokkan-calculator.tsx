@@ -61,6 +61,36 @@ function NumberField({
   );
 }
 
+function SourceAttributions({
+  characters,
+}: {
+  characters: (DokkanCharacter | null)[];
+}) {
+  const withSource = characters.filter(
+    (c): c is DokkanCharacter & { sourceUrl: string } => !!c?.sourceUrl
+  );
+
+  if (withSource.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-col gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+      {withSource.map((c) => (
+        <p key={c.id} className="text-xs text-zinc-500 dark:text-zinc-400">
+          出典:{" "}
+          <a
+            href={c.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-zinc-700 dark:hover:text-zinc-200"
+          >
+            {c.name} - Dragon Ball Z Dokkan Battle Wiki
+          </a>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function CharacterSelect({
   label,
   characters,
@@ -202,6 +232,20 @@ function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
             className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           />
         </label>
+        <label className="flex flex-col gap-1 text-sm sm:col-span-2">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">
+            出典URL(Dokkan Battle Wiki)
+          </span>
+          <input
+            type="url"
+            name="sourceUrl"
+            placeholder="https://dbz-dokkanbattle.fandom.com/wiki/..."
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            CC BY-SA 3.0での出典表示に使用。該当キャラのWikiページURLを入力
+          </span>
+        </label>
         <button
           type="submit"
           className="sm:col-span-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
@@ -219,6 +263,16 @@ function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
                 <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
                   ATK{c.baseAtk} / DEF{c.baseDef} / 気力×{c.kiMultiplier} / 必殺×{c.superAttackMultiplier}
                 </span>
+                {c.sourceUrl && (
+                  <a
+                    href={c.sourceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-2 text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  >
+                    出典
+                  </a>
+                )}
               </span>
               <form action={deleteCharacter}>
                 <input type="hidden" name="id" value={c.id} />
@@ -259,6 +313,10 @@ export default function DokkanCalculator({
   const [allyDamageReductionPercent, setAllyDamageReductionPercent] = useState(0);
   const [incomingTypeMatchup, setIncomingTypeMatchup] = useState<TypeMatchup>("neutral");
   const [enemyIsCritical, setEnemyIsCritical] = useState(false);
+
+  const [attackerCharacter, setAttackerCharacter] = useState<DokkanCharacter | null>(null);
+  const [enemyCharacter, setEnemyCharacter] = useState<DokkanCharacter | null>(null);
+  const [allyCharacter, setAllyCharacter] = useState<DokkanCharacter | null>(null);
 
   const result = useMemo(
     () =>
@@ -337,6 +395,7 @@ export default function DokkanCalculator({
               setBaseAtk(c.baseAtk);
               setKiMultiplier(c.kiMultiplier);
               setSuperAttackMultiplier(c.superAttackMultiplier);
+              setAttackerCharacter(c);
             }}
           />
           <NumberField label="基本ATK" value={baseAtk} onChange={setBaseAtk} step="1" />
@@ -433,6 +492,7 @@ export default function DokkanCalculator({
               {result.damage.toLocaleString()}
             </span>
           </div>
+          <SourceAttributions characters={[attackerCharacter]} />
         </section>
 
         <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -445,12 +505,16 @@ export default function DokkanCalculator({
             onSelect={(c) => {
               setEnemyAtk(c.baseAtk);
               setEnemySuperAttackMultiplier(c.superAttackMultiplier);
+              setEnemyCharacter(c);
             }}
           />
           <CharacterSelect
             label="味方キャラクター選択(自動入力)"
             characters={characters}
-            onSelect={(c) => setAllyDef(c.baseDef)}
+            onSelect={(c) => {
+              setAllyDef(c.baseDef);
+              setAllyCharacter(c);
+            }}
           />
           <NumberField
             label="敵ATK"
@@ -528,6 +592,7 @@ export default function DokkanCalculator({
               {incomingResult.damage.toLocaleString()}
             </span>
           </div>
+          <SourceAttributions characters={[enemyCharacter, allyCharacter]} />
         </section>
       </main>
     </div>
