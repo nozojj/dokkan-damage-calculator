@@ -27,7 +27,7 @@ enum DokkanClass {
 }
 
 model Character {
-  id                    String       @id @default(cuid())
+  id                    String                 @id @default(cuid())
   name                  String
   type                  DokkanType
   rarity                DokkanRarity
@@ -39,8 +39,65 @@ model Character {
   /// Dragon Ball Z Dokkan Battle Wiki (Fandom) 上の該当キャラページURL。CC BY-SA 3.0の出典表示に使用
   sourceUrl             String?
   /// Wikiインポート元の外部ID(DokkanAPIのカードID)。再インポート時の重複防止用
-  externalId            String?      @unique
-  createdAt             DateTime     @default(now())
+  externalId            String?                @unique
+  createdAt             DateTime               @default(now())
+  linkSkills            CharacterLinkSkill[]
+  supportItems          CharacterSupportItem[]
+  /// このキャラがよく組むパーティーメンバーとして登録した他キャラ
+  partyMembers          CharacterPartyMember[] @relation("PartyOwner")
+  /// このキャラを他キャラのパーティーメンバーとして登録している側からの参照
+  partyMemberOf         CharacterPartyMember[] @relation("PartyMemberRef")
+}
+
+/// リンクスキルの共通マスタ。同じリンク名を持つキャラ同士が隣接すると発動する(Dokkan本来の仕様)
+model LinkSkill {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  /// 効果メモ (例: ATK & DEF +3%, 気力+2)
+  description String?
+  createdAt   DateTime             @default(now())
+  characters  CharacterLinkSkill[]
+}
+
+model CharacterLinkSkill {
+  id          String    @id @default(cuid())
+  characterId String
+  linkSkillId String
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  linkSkill   LinkSkill @relation(fields: [linkSkillId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, linkSkillId])
+}
+
+/// サポートアイテム(サポートメモリー)の共通マスタ
+model SupportItem {
+  id         String                 @id @default(cuid())
+  name       String
+  /// 効果メモ (例: ATK+5000 DEF+3000)
+  effect     String
+  createdAt  DateTime               @default(now())
+  characters CharacterSupportItem[]
+}
+
+model CharacterSupportItem {
+  id            String      @id @default(cuid())
+  characterId   String
+  supportItemId String
+  character     Character   @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  supportItem   SupportItem @relation(fields: [supportItemId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, supportItemId])
+}
+
+/// 「このキャラとよく組むパーティーメンバー」の登録(参照用。リンク共有判定への自動計算はまだ未実装)
+model CharacterPartyMember {
+  id          String    @id @default(cuid())
+  characterId String
+  memberId    String
+  character   Character @relation("PartyOwner", fields: [characterId], references: [id], onDelete: Cascade)
+  member      Character @relation("PartyMemberRef", fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([characterId, memberId])
 }
 
 model Enemy {

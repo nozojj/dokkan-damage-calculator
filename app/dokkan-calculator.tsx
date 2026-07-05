@@ -18,6 +18,8 @@ import {
 } from "./lib/characters";
 import type { Enemy } from "./lib/enemies";
 import type { Stage } from "./lib/stages";
+import type { LinkSkill } from "./lib/linkSkills";
+import type { SupportItem } from "./lib/supportItems";
 
 function typeLabel(type: DokkanType) {
   return DOKKAN_TYPE_LABELS[type];
@@ -33,10 +35,15 @@ function enemyTag(e: Enemy) {
 import {
   createCharacter,
   createEnemy,
+  createLinkSkill,
   createStage,
+  createSupportItem,
   deleteCharacter,
   deleteEnemy,
+  deleteLinkSkill,
   deleteStage,
+  deleteSupportItem,
+  updateCharacterLinks,
 } from "./lib/actions";
 
 const TYPE_MATCHUP_OPTIONS: { value: TypeMatchup; label: string }[] = [
@@ -186,7 +193,15 @@ function SearchableSelect<T>({
   );
 }
 
-function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
+function CharacterManager({
+  characters,
+  linkSkills,
+  supportItems,
+}: {
+  characters: DokkanCharacter[];
+  linkSkills: LinkSkill[];
+  supportItems: SupportItem[];
+}) {
   return (
     <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -327,6 +342,31 @@ function CharacterManager({ characters }: { characters: DokkanCharacter[] }) {
                   <span className="text-xs text-zinc-500 dark:text-zinc-400">
                     攻撃{c.baseAtk.toLocaleString()} ・ 防御{c.baseDef.toLocaleString()} ・ 必殺倍率×{c.superAttackMultiplier}
                   </span>
+                  {(c.linkSkillIds.length > 0 ||
+                    c.supportItemIds.length > 0 ||
+                    c.partyMemberIds.length > 0) && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {c.linkSkillIds.length > 0 &&
+                        `リンク: ${c.linkSkillIds
+                          .map((id) => linkSkills.find((l) => l.id === id)?.name)
+                          .filter(Boolean)
+                          .join(" / ")}`}
+                      {c.linkSkillIds.length > 0 &&
+                        (c.supportItemIds.length > 0 || c.partyMemberIds.length > 0) &&
+                        " ・ "}
+                      {c.supportItemIds.length > 0 &&
+                        `サポート: ${c.supportItemIds
+                          .map((id) => supportItems.find((s) => s.id === id)?.name)
+                          .filter(Boolean)
+                          .join(" / ")}`}
+                      {c.supportItemIds.length > 0 && c.partyMemberIds.length > 0 && " ・ "}
+                      {c.partyMemberIds.length > 0 &&
+                        `味方: ${c.partyMemberIds
+                          .map((id) => characters.find((other) => other.id === id)?.name)
+                          .filter(Boolean)
+                          .join(" / ")}`}
+                    </span>
+                  )}
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   {c.sourceUrl && (
@@ -496,6 +536,314 @@ function EnemyManager({ enemies }: { enemies: Enemy[] }) {
             ))}
           </ul>
         </details>
+      )}
+    </section>
+  );
+}
+
+function LinkSkillManager({ linkSkills }: { linkSkills: LinkSkill[] }) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        リンクスキル管理
+      </h2>
+      <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        同じリンク名を持つキャラ同士が隣接すると発動する共通マスタです。下の「キャラ紐付け」で各キャラに紐付けます。
+      </p>
+
+      <form
+        key={linkSkills.length}
+        action={createLinkSkill}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">リンク名</span>
+          <input
+            type="text"
+            name="name"
+            required
+            placeholder="例: 透き通る愛"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">効果(任意)</span>
+          <input
+            type="text"
+            name="description"
+            placeholder="例: ATK & DEF +3%, 気力+2"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <button
+          type="submit"
+          className="sm:col-span-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          追加
+        </button>
+      </form>
+
+      {linkSkills.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            登録済みリンクスキル一覧を表示({linkSkills.length}件)
+          </summary>
+          <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+            {linkSkills.map((l) => (
+              <li key={l.id} className="flex items-start justify-between gap-2 py-2 text-sm">
+                <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                  <span className="font-medium">{l.name}</span>
+                  {l.description && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{l.description}</span>
+                  )}
+                </div>
+                <form action={deleteLinkSkill}>
+                  <input type="hidden" name="id" value={l.id} />
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                  >
+                    削除
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+function SupportItemManager({ supportItems }: { supportItems: SupportItem[] }) {
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        サポートアイテム管理
+      </h2>
+      <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        サポートメモリーなどの装備アイテムの共通マスタです。下の「キャラ紐付け」で各キャラに紐付けます。
+      </p>
+
+      <form
+        key={supportItems.length}
+        action={createSupportItem}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2"
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">アイテム名</span>
+          <input
+            type="text"
+            name="name"
+            required
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-zinc-800 dark:text-zinc-200">効果</span>
+          <input
+            type="text"
+            name="effect"
+            required
+            placeholder="例: ATK+5000 DEF+3000"
+            className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 outline-none focus:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <button
+          type="submit"
+          className="sm:col-span-2 rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+        >
+          追加
+        </button>
+      </form>
+
+      {supportItems.length > 0 && (
+        <details className="text-sm">
+          <summary className="cursor-pointer select-none font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+            登録済みサポートアイテム一覧を表示({supportItems.length}件)
+          </summary>
+          <ul className="mt-2 flex max-h-96 flex-col divide-y divide-zinc-200 overflow-auto dark:divide-zinc-800">
+            {supportItems.map((s) => (
+              <li key={s.id} className="flex items-start justify-between gap-2 py-2 text-sm">
+                <div className="flex flex-col gap-0.5 text-zinc-800 dark:text-zinc-200">
+                  <span className="font-medium">{s.name}</span>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">{s.effect}</span>
+                </div>
+                <form action={deleteSupportItem}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <button
+                    type="submit"
+                    className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                  >
+                    削除
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+function CharacterLinksForm({
+  character,
+  linkSkills,
+  supportItems,
+  characters,
+}: {
+  character: DokkanCharacter;
+  linkSkills: LinkSkill[];
+  supportItems: SupportItem[];
+  characters: DokkanCharacter[];
+}) {
+  const [partyMembers, setPartyMembers] = useState<DokkanCharacter[]>(() =>
+    character.partyMemberIds
+      .map((id) => characters.find((c) => c.id === id))
+      .filter((c): c is DokkanCharacter => !!c)
+  );
+
+  const partyMemberCandidates = useMemo(
+    () => characters.filter((c) => c.id !== character.id && !partyMembers.some((p) => p.id === c.id)),
+    [characters, character.id, partyMembers]
+  );
+
+  return (
+    <form action={updateCharacterLinks} className="flex flex-col gap-3">
+      <input type="hidden" name="characterId" value={character.id} />
+
+      {linkSkills.length > 0 && (
+        <fieldset className="flex flex-col gap-1">
+          <legend className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+            リンクスキル
+          </legend>
+          <div className="flex max-h-40 flex-col gap-1 overflow-auto rounded-md border border-zinc-300 p-2 dark:border-zinc-700">
+            {linkSkills.map((l) => (
+              <label key={l.id} className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">
+                <input
+                  type="checkbox"
+                  name="linkSkillIds"
+                  value={l.id}
+                  defaultChecked={character.linkSkillIds.includes(l.id)}
+                  className="h-4 w-4"
+                />
+                {l.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {supportItems.length > 0 && (
+        <fieldset className="flex flex-col gap-1">
+          <legend className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+            サポートアイテム
+          </legend>
+          <div className="flex max-h-40 flex-col gap-1 overflow-auto rounded-md border border-zinc-300 p-2 dark:border-zinc-700">
+            {supportItems.map((s) => (
+              <label key={s.id} className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">
+                <input
+                  type="checkbox"
+                  name="supportItemIds"
+                  value={s.id}
+                  defaultChecked={character.supportItemIds.includes(s.id)}
+                  className="h-4 w-4"
+                />
+                {s.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">
+          味方(パーティーメンバー)
+        </legend>
+        {partyMembers.length > 0 && (
+          <ul className="flex flex-col gap-1">
+            {partyMembers.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 text-sm text-zinc-800 dark:text-zinc-200">
+                <span>{characterTag(p)}</span>
+                <input type="hidden" name="partyMemberIds" value={p.id} />
+                <button
+                  type="button"
+                  onClick={() => setPartyMembers((members) => members.filter((m) => m.id !== p.id))}
+                  className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:border-red-400 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                >
+                  削除
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <SearchableSelect
+          label="味方を追加"
+          items={partyMemberCandidates}
+          getKey={(c) => c.id}
+          getLabel={characterTag}
+          placeholder="キャラ名で検索"
+          onSelect={(c) => setPartyMembers((members) => [...members, c])}
+        />
+      </fieldset>
+
+      <button
+        type="submit"
+        className="self-start rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+      >
+        保存
+      </button>
+    </form>
+  );
+}
+
+function CharacterLinksManager({
+  characters,
+  linkSkills,
+  supportItems,
+}: {
+  characters: DokkanCharacter[];
+  linkSkills: LinkSkill[];
+  supportItems: SupportItem[];
+}) {
+  const [selectedCharacterId, setSelectedCharacterId] = useState("");
+  const selectedCharacter = useMemo(
+    () => characters.find((c) => c.id === selectedCharacterId) ?? null,
+    [characters, selectedCharacterId]
+  );
+
+  return (
+    <section className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+      <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">キャラ紐付け</h2>
+      <p className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        キャラを選んで、リンクスキル・サポートアイテム・味方(パーティーメンバー)を登録します。
+      </p>
+
+      <SearchableSelect
+        label="キャラクター選択"
+        items={characters}
+        getKey={(c) => c.id}
+        getLabel={characterTag}
+        placeholder="キャラ名で検索"
+        emptyHint='「キャラクター管理」から追加すると選択できます'
+        onSelect={(c) => setSelectedCharacterId(c.id)}
+      />
+
+      {selectedCharacter && linkSkills.length === 0 && supportItems.length === 0 && (
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+          先に「リンクスキル管理」「サポートアイテム管理」から登録すると選べます(味方は登録済みキャラからいつでも追加できます)。
+        </p>
+      )}
+
+      {selectedCharacter && (
+        <CharacterLinksForm
+          key={selectedCharacter.id}
+          character={selectedCharacter}
+          linkSkills={linkSkills}
+          supportItems={supportItems}
+          characters={characters}
+        />
       )}
     </section>
   );
@@ -736,10 +1084,14 @@ export default function DokkanCalculator({
   characters,
   enemies,
   stages,
+  linkSkills,
+  supportItems,
 }: {
   characters: DokkanCharacter[];
   enemies: Enemy[];
   stages: Stage[];
+  linkSkills: LinkSkill[];
+  supportItems: SupportItem[];
 }) {
   const [baseAtk, setBaseAtk] = useState(10000);
   const [leaderSkillMultiplier, setLeaderSkillMultiplier] = useState(2.7);
@@ -879,8 +1231,15 @@ export default function DokkanCalculator({
           </p>
         </div>
 
-        <CharacterManager characters={characters} />
+        <CharacterManager characters={characters} linkSkills={linkSkills} supportItems={supportItems} />
         <EnemyManager enemies={enemies} />
+        <LinkSkillManager linkSkills={linkSkills} />
+        <SupportItemManager supportItems={supportItems} />
+        <CharacterLinksManager
+          characters={characters}
+          linkSkills={linkSkills}
+          supportItems={supportItems}
+        />
 
         <h2 className="-mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           与ダメージ計算(自分の攻撃)
